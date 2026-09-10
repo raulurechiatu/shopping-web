@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
+import InviteModal from "@/components/InviteModal";
 import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
 
 export default function ShoppingListView({
@@ -17,7 +18,7 @@ export default function ShoppingListView({
   const [items, setItems] = useState<ShoppingItem[]>(initialItems);
   const [catalog, setCatalog] = useState<CatalogItem[]>(initialCatalog);
   const [newItem, setNewItem] = useState("");
-  const [showCode, setShowCode] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -221,90 +222,108 @@ export default function ShoppingListView({
     .sort((a, b) => (b.checked_at ?? "").localeCompare(a.checked_at ?? ""));
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white px-4 py-4">
-        <div className="mx-auto flex max-w-lg items-center justify-between sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">{list.name}</h1>
+    <div className="min-h-screen bg-[#d8d3c8] px-0 py-0 sm:px-6 sm:py-10">
+      <div className="relative mx-auto min-h-screen w-full max-w-2xl bg-[#fffdf7] shadow-none sm:min-h-0 sm:rounded-lg sm:shadow-xl">
+        {/* Notebook margin line */}
+        <div className="pointer-events-none absolute top-0 bottom-0 left-10 w-px bg-red-300/70 sm:left-12" />
+
+        <header className="relative border-b border-gray-200 px-5 pt-6 pb-4 pl-16 sm:pl-20">
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">{list.name}</h1>
             <button
-              onClick={() => setShowCode((s) => !s)}
-              className="text-xs text-gray-500 underline"
+              onClick={signOut}
+              className="mt-1 shrink-0 text-xs text-gray-400 hover:text-gray-600"
             >
-              {showCode ? `Invite code: ${list.invite_code}` : "Show invite code"}
+              Sign out
             </button>
           </div>
-          <button onClick={signOut} className="text-sm text-gray-500 hover:text-gray-900">
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-lg px-4 py-6 sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
-        <form onSubmit={handleSubmit} className="mb-3 flex gap-2">
-          <input
-            ref={inputRef}
-            autoFocus
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            placeholder="Add an item... (EN or RO)"
-            className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none"
-          />
           <button
-            type="submit"
-            disabled={isAdding || !newItem.trim()}
-            className="shrink-0 touch-manipulation rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-40"
+            onClick={() => setShowInvite(true)}
+            className="mt-2 flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"
           >
-            Add
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 000 6h.17A3 3 0 0015 8zM5 10a3 3 0 100 6 3 3 0 000-6zm10 2a3 3 0 100 6 3 3 0 000-6z" />
+              <path d="M7.5 12.5l5-3M7.5 13.5l5 3" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+            Invite people · {list.invite_code}
           </button>
-        </form>
+        </header>
 
-        {suggestions.length > 0 && (
-          <div className="mb-6">
-            {!newItem.trim() && (
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
-                Quick add
-              </p>
-            )}
-            <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
-              {suggestions.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => addItemByName(c.name)}
-                  className="flex shrink-0 touch-manipulation items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm hover:border-gray-300 hover:bg-gray-50 sm:shrink"
-                >
-                  <span>{getItemIcon(c.name)}</span>
-                  {c.name}
-                </button>
-              ))}
+        <main className="px-5 py-5 pl-16 sm:pl-20">
+          <form onSubmit={handleSubmit} className="mb-3 flex items-end gap-2">
+            <input
+              ref={inputRef}
+              autoFocus
+              value={newItem}
+              onChange={(e) => setNewItem(e.target.value)}
+              placeholder="Write an item... (EN or RO)"
+              className="font-hand flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-lg text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={isAdding || !newItem.trim()}
+              className="shrink-0 touch-manipulation rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-40"
+            >
+              Add
+            </button>
+          </form>
+
+          {suggestions.length > 0 && (
+            <div className="mb-6">
+              {!newItem.trim() && (
+                <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
+                  Quick add
+                </p>
+              )}
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+                {suggestions.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => addItemByName(c.name)}
+                    className="font-hand flex shrink-0 touch-manipulation items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-base text-amber-900 hover:border-amber-300 hover:bg-amber-100 sm:shrink"
+                  >
+                    <span>{getItemIcon(c.name)}</span>
+                    {c.name}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {pending.length === 0 && checked.length === 0 && (
-          <p className="py-12 text-center text-sm text-gray-400">
-            No items yet. Add something to get started.
-          </p>
-        )}
-
-        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {pending.map((item) => (
-            <ItemRow key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
-          ))}
-        </ul>
-
-        {checked.length > 0 && (
-          <div className="mt-8">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
-              Checked ({checked.length})
+          {pending.length === 0 && checked.length === 0 && (
+            <p className="font-hand py-12 text-center text-lg text-gray-400">
+              The list is empty. Write something above to get started.
             </p>
-            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {checked.map((item) => (
-                <ItemRow key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
-              ))}
-            </ul>
-          </div>
-        )}
-      </main>
+          )}
+
+          <ul className="divide-y divide-gray-200">
+            {pending.map((item) => (
+              <ItemRow key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+            ))}
+          </ul>
+
+          {checked.length > 0 && (
+            <div className="mt-6">
+              <p className="mb-1 text-xs font-medium tracking-wide text-gray-400 uppercase">
+                Checked ({checked.length})
+              </p>
+              <ul className="divide-y divide-gray-100">
+                {checked.map((item) => (
+                  <ItemRow key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+                ))}
+              </ul>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {showInvite && (
+        <InviteModal
+          listName={list.name}
+          inviteCode={list.invite_code}
+          onClose={() => setShowInvite(false)}
+        />
+      )}
     </div>
   );
 }
@@ -319,21 +338,15 @@ function ItemRow({
   onDelete: (item: ShoppingItem) => void;
 }) {
   return (
-    <li
-      className={`flex items-center gap-1 rounded-xl pr-2 transition-colors ${
-        item.is_checked ? "bg-gray-100" : "bg-white shadow-sm"
-      }`}
-    >
+    <li className="flex items-center gap-1">
       <button
         type="button"
         onClick={() => onToggle(item)}
-        className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 rounded-xl px-4 py-3 text-left"
+        className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 py-3 text-left"
       >
         <span
           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-            item.is_checked
-              ? "border-emerald-600 bg-emerald-600"
-              : "border-gray-300 bg-white"
+            item.is_checked ? "border-blue-800 bg-blue-800" : "border-gray-400 bg-white"
           }`}
         >
           {item.is_checked && (
@@ -348,10 +361,12 @@ function ItemRow({
             </svg>
           )}
         </span>
-        <span className="shrink-0 text-lg leading-none">{getItemIcon(item.name)}</span>
+        <span className="shrink-0 text-xl leading-none">{getItemIcon(item.name)}</span>
         <span
-          className={`flex-1 truncate text-sm ${
-            item.is_checked ? "text-gray-400 line-through" : "font-medium text-gray-900"
+          className={`font-hand flex-1 truncate text-xl ${
+            item.is_checked
+              ? "text-gray-400 line-through decoration-red-500 decoration-2"
+              : "text-gray-900"
           }`}
         >
           {item.name}
