@@ -243,6 +243,15 @@ export default function ShoppingListView({
               </svg>
               My Lists
             </Link>
+            <Link
+              href="/recipes"
+              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:border-amber-300 hover:bg-amber-100"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                <path d="M4 3a1 1 0 00-1 1v12a1 1 0 001 1h1V3H4zm3 0v14h9a1 1 0 001-1V4a1 1 0 00-1-1H7zm2 3h5v1.5H9V6zm0 3h5v1.5H9V9z" />
+              </svg>
+              Recipes
+            </Link>
             <button
               onClick={() => setShowInvite(true)}
               className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"

@@ -24,3 +24,20 @@ export type CatalogItem = {
   use_count: number;
   last_used_at: string;
 };
+
+export type Recipe = {
+  id: string;
+  owner_id: string;
+  name: string;
+  instructions: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RecipeIngredient = {
+  id: string;
+  recipe_id: string;
+  name: string;
+  quantity: string | null;
+  position: number;
+};

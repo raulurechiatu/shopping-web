@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import CreateOrJoinList from "@/components/CreateOrJoinList";
 import SignOutButton from "@/components/SignOutButton";
@@ -30,7 +31,12 @@ export default async function ListsPage() {
       <div className="mx-auto flex max-w-sm flex-col items-center gap-6">
         <div className="flex w-full items-center justify-between">
           <h1 className="font-script text-3xl font-bold text-gray-900">Your Lists</h1>
-          <SignOutButton className="text-xs text-gray-500 hover:text-gray-700" />
+          <div className="flex items-center gap-3 text-xs">
+            <Link href="/recipes" className="text-gray-500 hover:text-gray-700">
+              Recipes
+            </Link>
+            <SignOutButton className="text-gray-500 hover:text-gray-700" />
+          </div>
         </div>
 
         {lists.length > 0 && (
