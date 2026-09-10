@@ -1,12 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+
+  const [showGuestForm, setShowGuestForm] = useState(false);
+  const [guestCode, setGuestCode] = useState("");
+  const [guestStatus, setGuestStatus] = useState<"idle" | "joining" | "error">("idle");
+  const [guestError, setGuestError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,6 +50,45 @@ export default function LoginPage() {
       setError(error.message);
       setStatus("error");
     }
+  }
+
+  async function handleGuestJoin(e: React.FormEvent) {
+    e.preventDefault();
+    const code = guestCode.trim();
+    if (!code) return;
+
+    setGuestStatus("joining");
+    setGuestError(null);
+
+    const supabase = createClient();
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      const { error: anonError } = await supabase.auth.signInAnonymously();
+      if (anonError) {
+        setGuestError(
+          anonError.message.toLowerCase().includes("anonymous")
+            ? "Guest access isn't enabled for this list yet."
+            : anonError.message,
+        );
+        setGuestStatus("error");
+        return;
+      }
+    }
+
+    const { error: joinError } = await supabase.rpc("join_list_by_code", { code });
+
+    if (joinError) {
+      setGuestError(joinError.message.includes("Invalid") ? "That invite code doesn't match a list." : joinError.message);
+      setGuestStatus("error");
+      return;
+    }
+
+    router.push("/");
+    router.refresh();
   }
 
   return (
@@ -107,6 +153,44 @@ export default function LoginPage() {
               {status === "sending" ? "Sending..." : "Send magic link"}
             </button>
             {error && <p className="text-sm text-red-600">{error}</p>}
+          </form>
+        )}
+
+        <div className="my-4 flex items-center gap-3 text-xs text-gray-400">
+          <div className="h-px flex-1 bg-gray-200" />
+          or
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
+
+        {!showGuestForm ? (
+          <button
+            type="button"
+            onClick={() => setShowGuestForm(true)}
+            className="w-full text-center text-sm text-gray-500 underline hover:text-gray-900"
+          >
+            Have an invite code? Join without an account
+          </button>
+        ) : (
+          <form onSubmit={handleGuestJoin} className="space-y-3">
+            <input
+              type="text"
+              required
+              placeholder="Invite code"
+              value={guestCode}
+              onChange={(e) => setGuestCode(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={guestStatus === "joining"}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {guestStatus === "joining" ? "Joining..." : "Join as guest"}
+            </button>
+            {guestError && <p className="text-sm text-red-600">{guestError}</p>}
+            <p className="text-center text-xs text-gray-400">
+              No email needed — you&apos;ll be able to add and check off items right away.
+            </p>
           </form>
         )}
       </div>
