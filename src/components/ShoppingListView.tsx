@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
 import InviteModal from "@/components/InviteModal";
+import SignOutButton from "@/components/SignOutButton";
 import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
 
 export default function ShoppingListView({
@@ -18,6 +20,7 @@ export default function ShoppingListView({
   const [items, setItems] = useState<ShoppingItem[]>(initialItems);
   const [catalog, setCatalog] = useState<CatalogItem[]>(initialCatalog);
   const [newItem, setNewItem] = useState("");
+  const [newQuantity, setNewQuantity] = useState("");
   const [showInvite, setShowInvite] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -106,17 +109,21 @@ export default function ShoppingListView({
       .slice(0, query ? 6 : 12);
   }, [catalog, pendingNames, newItem]);
 
-  async function addItemByName(rawName: string) {
+  async function addItemByName(rawName: string, rawQuantity?: string) {
     const name = rawName.trim();
     if (!name || isAdding) return;
     // Someone's already shopping for this — don't create a second row.
     if (pendingNames.has(name.toLowerCase())) {
       setNewItem("");
+      setNewQuantity("");
       return;
     }
 
+    const quantity = rawQuantity?.trim() || null;
+
     setIsAdding(true);
     setNewItem("");
+    setNewQuantity("");
     inputRef.current?.focus();
 
     const supabase = createClient();
@@ -129,7 +136,7 @@ export default function ShoppingListView({
       id: tempId,
       list_id: list.id,
       name,
-      quantity: null,
+      quantity,
       is_checked: false,
       added_by: user?.id ?? null,
       created_at: new Date().toISOString(),
@@ -139,7 +146,7 @@ export default function ShoppingListView({
 
     const { data, error } = await supabase
       .from("list_items")
-      .insert({ list_id: list.id, name, added_by: user?.id ?? null })
+      .insert({ list_id: list.id, name, quantity, added_by: user?.id ?? null })
       .select()
       .single();
 
@@ -169,7 +176,7 @@ export default function ShoppingListView({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await addItemByName(newItem);
+    await addItemByName(newItem, newQuantity);
   }
 
   async function toggleItem(item: ShoppingItem) {
@@ -208,12 +215,6 @@ export default function ShoppingListView({
     }
   }
 
-  async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    window.location.href = "/login";
-  }
-
   const pending = items
     .filter((i) => !i.is_checked)
     .sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -230,12 +231,12 @@ export default function ShoppingListView({
         <header className="relative border-b border-gray-200 px-5 pt-6 pb-4 pl-16 sm:pl-20">
           <div className="flex items-start justify-between gap-3">
             <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">{list.name}</h1>
-            <button
-              onClick={signOut}
-              className="mt-1 shrink-0 text-xs text-gray-400 hover:text-gray-600"
-            >
-              Sign out
-            </button>
+            <div className="mt-1 flex shrink-0 items-center gap-3 text-xs">
+              <Link href="/lists" className="text-gray-400 hover:text-gray-600">
+                My Lists
+              </Link>
+              <SignOutButton className="text-gray-400 hover:text-gray-600" />
+            </div>
           </div>
           <button
             onClick={() => setShowInvite(true)}
@@ -257,7 +258,13 @@ export default function ShoppingListView({
               value={newItem}
               onChange={(e) => setNewItem(e.target.value)}
               placeholder="Write an item... (EN or RO)"
-              className="font-hand flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-lg text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
+              className="font-hand min-w-0 flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-lg text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
+            />
+            <input
+              value={newQuantity}
+              onChange={(e) => setNewQuantity(e.target.value)}
+              placeholder="qty"
+              className="font-hand w-16 shrink-0 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-lg text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
             />
             <button
               type="submit"
@@ -296,20 +303,20 @@ export default function ShoppingListView({
             </p>
           )}
 
-          <ul className="divide-y divide-gray-200">
+          <ul className="flex flex-wrap gap-2">
             {pending.map((item) => (
-              <ItemRow key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+              <ItemChip key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
             ))}
           </ul>
 
           {checked.length > 0 && (
             <div className="mt-6">
-              <p className="mb-1 text-xs font-medium tracking-wide text-gray-400 uppercase">
+              <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
                 Checked ({checked.length})
               </p>
-              <ul className="divide-y divide-gray-100">
+              <ul className="flex flex-wrap gap-2">
                 {checked.map((item) => (
-                  <ItemRow key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+                  <ItemChip key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
                 ))}
               </ul>
             </div>
@@ -328,7 +335,7 @@ export default function ShoppingListView({
   );
 }
 
-function ItemRow({
+function ItemChip({
   item,
   onToggle,
   onDelete,
@@ -338,43 +345,48 @@ function ItemRow({
   onDelete: (item: ShoppingItem) => void;
 }) {
   return (
-    <li className="flex items-center gap-1">
+    <li
+      className={`flex items-center rounded-full border ${
+        item.is_checked ? "border-gray-200 bg-gray-100" : "border-gray-300 bg-white"
+      }`}
+    >
       <button
         type="button"
         onClick={() => onToggle(item)}
-        className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 py-3 text-left"
+        className="flex touch-manipulation items-center gap-1.5 py-1.5 pr-1 pl-2.5 text-left"
       >
         <span
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
             item.is_checked ? "border-blue-800 bg-blue-800" : "border-gray-400 bg-white"
           }`}
         >
           {item.is_checked && (
-            <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5">
+            <svg viewBox="0 0 16 16" fill="none" className="h-2.5 w-2.5">
               <path
                 d="M3 8.5L6.5 12L13 4.5"
                 stroke="white"
-                strokeWidth="2"
+                strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             </svg>
           )}
         </span>
-        <span className="shrink-0 text-xl leading-none">{getItemIcon(item.name)}</span>
+        <span className="shrink-0 text-base leading-none">{getItemIcon(item.name)}</span>
         <span
-          className={`font-hand flex-1 truncate text-xl ${
+          className={`font-hand text-base whitespace-nowrap ${
             item.is_checked
               ? "text-gray-400 line-through decoration-red-500 decoration-2"
               : "text-gray-900"
           }`}
         >
           {item.name}
+          {item.quantity && <span className="ml-1 text-xs text-gray-400">×{item.quantity}</span>}
         </span>
       </button>
       <button
         onClick={() => onDelete(item)}
-        className="shrink-0 touch-manipulation rounded-full p-2.5 text-gray-300 hover:bg-red-50 hover:text-red-500"
+        className="shrink-0 touch-manipulation rounded-full p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-500"
         aria-label="Delete item"
       >
         ✕

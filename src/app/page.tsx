@@ -1,6 +1,5 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import CreateOrJoinList from "@/components/CreateOrJoinList";
-import ShoppingListView from "@/components/ShoppingListView";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -13,36 +12,15 @@ export default async function Home() {
     return null; // middleware redirects to /login
   }
 
-  const { data: membership } = await supabase
+  const { data: memberships } = await supabase
     .from("list_members")
-    .select("list_id, lists(*)")
+    .select("list_id")
     .eq("user_id", user.id)
-    .order("joined_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .order("joined_at", { ascending: true });
 
-  const list = membership?.lists as unknown as
-    | { id: string; name: string; invite_code: string; owner_id: string; created_at: string }
-    | undefined;
-
-  if (!list) {
-    return <CreateOrJoinList />;
+  if (memberships && memberships.length === 1) {
+    redirect(`/lists/${memberships[0].list_id}`);
   }
 
-  const [{ data: items }, { data: catalog }] = await Promise.all([
-    supabase
-      .from("list_items")
-      .select("*")
-      .eq("list_id", list.id)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("list_item_catalog")
-      .select("*")
-      .eq("list_id", list.id)
-      .order("use_count", { ascending: false })
-      .order("last_used_at", { ascending: false })
-      .limit(30),
-  ]);
-
-  return <ShoppingListView list={list} initialItems={items ?? []} initialCatalog={catalog ?? []} />;
+  redirect("/lists");
 }
