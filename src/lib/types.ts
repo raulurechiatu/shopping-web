@@ -16,3 +16,11 @@ export type ShoppingItem = {
   created_at: string;
   checked_at: string | null;
 };
+
+export type CatalogItem = {
+  id: string;
+  list_id: string;
+  name: string;
+  use_count: number;
+  last_used_at: string;
+};

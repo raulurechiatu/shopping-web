@@ -29,11 +29,20 @@ export default async function Home() {
     return <CreateOrJoinList />;
   }
 
-  const { data: items } = await supabase
-    .from("list_items")
-    .select("*")
-    .eq("list_id", list.id)
-    .order("created_at", { ascending: true });
+  const [{ data: items }, { data: catalog }] = await Promise.all([
+    supabase
+      .from("list_items")
+      .select("*")
+      .eq("list_id", list.id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("list_item_catalog")
+      .select("*")
+      .eq("list_id", list.id)
+      .order("use_count", { ascending: false })
+      .order("last_used_at", { ascending: false })
+      .limit(30),
+  ]);
 
-  return <ShoppingListView list={list} initialItems={items ?? []} />;
+  return <ShoppingListView list={list} initialItems={items ?? []} initialCatalog={catalog ?? []} />;
 }

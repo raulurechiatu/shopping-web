@@ -1,23 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { ShoppingItem, ShoppingList } from "@/lib/types";
+import { getItemIcon } from "@/lib/itemIcons";
+import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
 
 export default function ShoppingListView({
   list,
   initialItems,
+  initialCatalog,
 }: {
   list: ShoppingList;
   initialItems: ShoppingItem[];
+  initialCatalog: CatalogItem[];
 }) {
   const [items, setItems] = useState<ShoppingItem[]>(initialItems);
+  const [catalog, setCatalog] = useState<CatalogItem[]>(initialCatalog);
   const [newItem, setNewItem] = useState("");
   const [showCode, setShowCode] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
-    let channel: ReturnType<typeof supabase.channel> | undefined;
+    let itemsChannel: ReturnType<typeof supabase.channel> | undefined;
+    let catalogChannel: ReturnType<typeof supabase.channel> | undefined;
     let cancelled = false;
 
     // The realtime client only authenticates once the session has been
@@ -26,7 +32,7 @@ export default function ShoppingListView({
     supabase.auth.getSession().then(() => {
       if (cancelled) return;
 
-      channel = supabase
+      itemsChannel = supabase
         .channel(`list_items:${list.id}`)
         .on(
           "postgres_changes",
@@ -51,28 +57,82 @@ export default function ShoppingListView({
           },
         )
         .subscribe();
+
+      catalogChannel = supabase
+        .channel(`list_item_catalog:${list.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "list_item_catalog",
+            filter: `list_id=eq.${list.id}`,
+          },
+          (payload) => {
+            setCatalog((current) => {
+              if (payload.eventType === "DELETE") {
+                const removed = payload.old as CatalogItem;
+                return current.filter((c) => c.id !== removed.id);
+              }
+              const incoming = payload.new as CatalogItem;
+              const withoutIncoming = current.filter((c) => c.id !== incoming.id);
+              return [...withoutIncoming, incoming];
+            });
+          },
+        )
+        .subscribe();
     });
 
     return () => {
       cancelled = true;
-      if (channel) supabase.removeChannel(channel);
+      if (itemsChannel) supabase.removeChannel(itemsChannel);
+      if (catalogChannel) supabase.removeChannel(catalogChannel);
     };
   }, [list.id]);
 
-  async function addItem(e: React.FormEvent) {
-    e.preventDefault();
-    const name = newItem.trim();
+  const pendingNames = useMemo(
+    () => new Set(items.filter((i) => !i.is_checked).map((i) => i.name.toLowerCase())),
+    [items],
+  );
+
+  const suggestions = useMemo(() => {
+    const query = newItem.trim().toLowerCase();
+    return [...catalog]
+      .filter((c) => !pendingNames.has(c.name.toLowerCase()))
+      .filter((c) => (query ? c.name.toLowerCase().includes(query) : true))
+      .sort((a, b) => b.use_count - a.use_count || b.last_used_at.localeCompare(a.last_used_at))
+      .slice(0, query ? 6 : 12);
+  }, [catalog, pendingNames, newItem]);
+
+  async function addItemByName(rawName: string) {
+    const name = rawName.trim();
     if (!name) return;
     setNewItem("");
+    inputRef.current?.focus();
 
     const supabase = createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    await supabase
-      .from("list_items")
-      .insert({ list_id: list.id, name, added_by: user?.id ?? null });
+    await supabase.from("list_items").insert({ list_id: list.id, name, added_by: user?.id ?? null });
+
+    setCatalog((current) => {
+      const existing = current.find((c) => c.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        return current.map((c) =>
+          c.id === existing.id
+            ? { ...c, use_count: c.use_count + 1, last_used_at: new Date().toISOString() }
+            : c,
+        );
+      }
+      return current;
+    });
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await addItemByName(newItem);
   }
 
   async function toggleItem(item: ShoppingItem) {
@@ -107,7 +167,7 @@ export default function ShoppingListView({
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="border-b border-gray-200 bg-white px-4 py-4">
-        <div className="mx-auto flex max-w-lg items-center justify-between">
+        <div className="mx-auto flex max-w-lg items-center justify-between sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
           <div>
             <h1 className="text-lg font-semibold text-gray-900">{list.name}</h1>
             <button
@@ -123,9 +183,11 @@ export default function ShoppingListView({
         </div>
       </header>
 
-      <main className="mx-auto max-w-lg px-4 py-6">
-        <form onSubmit={addItem} className="mb-6 flex gap-2">
+      <main className="mx-auto max-w-lg px-4 py-6 sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
+        <form onSubmit={handleSubmit} className="mb-3 flex gap-2">
           <input
+            ref={inputRef}
+            autoFocus
             value={newItem}
             onChange={(e) => setNewItem(e.target.value)}
             placeholder="Add an item..."
@@ -133,11 +195,33 @@ export default function ShoppingListView({
           />
           <button
             type="submit"
-            className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+            className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
           >
             Add
           </button>
         </form>
+
+        {suggestions.length > 0 && (
+          <div className="mb-6">
+            {!newItem.trim() && (
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
+                Quick add
+              </p>
+            )}
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+              {suggestions.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => addItemByName(c.name)}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm hover:border-gray-300 hover:bg-gray-50 sm:shrink"
+                >
+                  <span>{getItemIcon(c.name)}</span>
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {pending.length === 0 && checked.length === 0 && (
           <p className="py-12 text-center text-sm text-gray-400">
@@ -145,7 +229,7 @@ export default function ShoppingListView({
           </p>
         )}
 
-        <ul className="space-y-2">
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {pending.map((item) => (
             <ItemRow key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
           ))}
@@ -156,7 +240,7 @@ export default function ShoppingListView({
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
               Checked ({checked.length})
             </p>
-            <ul className="space-y-2">
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {checked.map((item) => (
                 <ItemRow key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
               ))}
@@ -185,8 +269,9 @@ function ItemRow({
         onChange={() => onToggle(item)}
         className="h-5 w-5 shrink-0 rounded border-gray-300"
       />
+      <span className="shrink-0 text-lg leading-none">{getItemIcon(item.name)}</span>
       <span
-        className={`flex-1 text-sm ${item.is_checked ? "text-gray-400 line-through" : "text-gray-900"}`}
+        className={`flex-1 truncate text-sm ${item.is_checked ? "text-gray-400 line-through" : "text-gray-900"}`}
       >
         {item.name}
       </span>
