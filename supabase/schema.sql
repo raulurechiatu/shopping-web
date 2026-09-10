@@ -1,0 +1,114 @@
+-- Run this in the Supabase SQL editor (Project > SQL Editor > New query)
+
+create extension if not exists pgcrypto;
+
+create table if not exists public.lists (
+  id uuid primary key default gen_random_uuid(),
+  name text not null default 'Shopping List',
+  invite_code text not null unique default substr(md5(random()::text), 1, 8),
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.list_members (
+  list_id uuid not null references public.lists(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  joined_at timestamptz not null default now(),
+  primary key (list_id, user_id)
+);
+
+create table if not exists public.list_items (
+  id uuid primary key default gen_random_uuid(),
+  list_id uuid not null references public.lists(id) on delete cascade,
+  name text not null,
+  quantity text,
+  is_checked boolean not null default false,
+  added_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  checked_at timestamptz
+);
+
+alter table public.lists enable row level security;
+alter table public.list_members enable row level security;
+alter table public.list_items enable row level security;
+
+-- lists: a user can see/manage lists they belong to
+create policy "members can view their lists" on public.lists
+  for select using (
+    exists (select 1 from public.list_members m where m.list_id = lists.id and m.user_id = auth.uid())
+  );
+
+create policy "owner can update their list" on public.lists
+  for update using (owner_id = auth.uid());
+
+create policy "owner can delete their list" on public.lists
+  for delete using (owner_id = auth.uid());
+
+-- list_members: members can see who else is on their lists
+create policy "members can view membership" on public.list_members
+  for select using (
+    exists (select 1 from public.list_members m where m.list_id = list_members.list_id and m.user_id = auth.uid())
+  );
+
+create policy "members can leave a list" on public.list_members
+  for delete using (user_id = auth.uid());
+
+-- list_items: members can view/add/update/delete items on their lists
+create policy "members can view items" on public.list_items
+  for select using (
+    exists (select 1 from public.list_members m where m.list_id = list_items.list_id and m.user_id = auth.uid())
+  );
+
+create policy "members can insert items" on public.list_items
+  for insert with check (
+    exists (select 1 from public.list_members m where m.list_id = list_items.list_id and m.user_id = auth.uid())
+  );
+
+create policy "members can update items" on public.list_items
+  for update using (
+    exists (select 1 from public.list_members m where m.list_id = list_items.list_id and m.user_id = auth.uid())
+  );
+
+create policy "members can delete items" on public.list_items
+  for delete using (
+    exists (select 1 from public.list_members m where m.list_id = list_items.list_id and m.user_id = auth.uid())
+  );
+
+-- Atomically create a list and add the creator as a member
+create or replace function public.create_list(list_name text default 'Shopping List')
+returns public.lists
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_list public.lists;
+begin
+  insert into public.lists (name, owner_id) values (list_name, auth.uid()) returning * into new_list;
+  insert into public.list_members (list_id, user_id) values (new_list.id, auth.uid());
+  return new_list;
+end;
+$$;
+
+-- Join an existing list via its invite code
+create or replace function public.join_list_by_code(code text)
+returns public.lists
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_list public.lists;
+begin
+  select * into target_list from public.lists where invite_code = code;
+  if target_list.id is null then
+    raise exception 'Invalid invite code';
+  end if;
+  insert into public.list_members (list_id, user_id) values (target_list.id, auth.uid())
+  on conflict do nothing;
+  return target_list;
+end;
+$$;
+
+-- Enable realtime updates on list_items
+alter publication supabase_realtime add table public.list_items;
