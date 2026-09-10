@@ -18,6 +18,7 @@ export default function ShoppingListView({
   const [catalog, setCatalog] = useState<CatalogItem[]>(initialCatalog);
   const [newItem, setNewItem] = useState("");
   const [showCode, setShowCode] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -106,7 +107,14 @@ export default function ShoppingListView({
 
   async function addItemByName(rawName: string) {
     const name = rawName.trim();
-    if (!name) return;
+    if (!name || isAdding) return;
+    // Someone's already shopping for this — don't create a second row.
+    if (pendingNames.has(name.toLowerCase())) {
+      setNewItem("");
+      return;
+    }
+
+    setIsAdding(true);
     setNewItem("");
     inputRef.current?.focus();
 
@@ -115,19 +123,47 @@ export default function ShoppingListView({
       data: { user },
     } = await supabase.auth.getUser();
 
-    await supabase.from("list_items").insert({ list_id: list.id, name, added_by: user?.id ?? null });
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const optimisticItem: ShoppingItem = {
+      id: tempId,
+      list_id: list.id,
+      name,
+      quantity: null,
+      is_checked: false,
+      added_by: user?.id ?? null,
+      created_at: new Date().toISOString(),
+      checked_at: null,
+    };
+    setItems((current) => [...current, optimisticItem]);
 
-    setCatalog((current) => {
-      const existing = current.find((c) => c.name.toLowerCase() === name.toLowerCase());
-      if (existing) {
-        return current.map((c) =>
-          c.id === existing.id
-            ? { ...c, use_count: c.use_count + 1, last_used_at: new Date().toISOString() }
-            : c,
-        );
-      }
-      return current;
+    const { data, error } = await supabase
+      .from("list_items")
+      .insert({ list_id: list.id, name, added_by: user?.id ?? null })
+      .select()
+      .single();
+
+    setItems((current) => {
+      const withoutTemp = current.filter((i) => i.id !== tempId);
+      if (error || !data) return withoutTemp;
+      if (withoutTemp.some((i) => i.id === data.id)) return withoutTemp;
+      return [...withoutTemp, data as ShoppingItem];
     });
+
+    if (!error) {
+      setCatalog((current) => {
+        const existing = current.find((c) => c.name.toLowerCase() === name.toLowerCase());
+        if (existing) {
+          return current.map((c) =>
+            c.id === existing.id
+              ? { ...c, use_count: c.use_count + 1, last_used_at: new Date().toISOString() }
+              : c,
+          );
+        }
+        return current;
+      });
+    }
+
+    setIsAdding(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -136,19 +172,39 @@ export default function ShoppingListView({
   }
 
   async function toggleItem(item: ShoppingItem) {
+    const nextChecked = !item.is_checked;
+    setItems((current) =>
+      current.map((i) =>
+        i.id === item.id
+          ? { ...i, is_checked: nextChecked, checked_at: nextChecked ? new Date().toISOString() : null }
+          : i,
+      ),
+    );
+
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("list_items")
       .update({
-        is_checked: !item.is_checked,
-        checked_at: !item.is_checked ? new Date().toISOString() : null,
+        is_checked: nextChecked,
+        checked_at: nextChecked ? new Date().toISOString() : null,
       })
       .eq("id", item.id);
+
+    if (error) {
+      // Roll back on failure.
+      setItems((current) => current.map((i) => (i.id === item.id ? item : i)));
+    }
   }
 
-  async function deleteItem(id: string) {
+  async function deleteItem(item: ShoppingItem) {
+    setItems((current) => current.filter((i) => i.id !== item.id));
+
     const supabase = createClient();
-    await supabase.from("list_items").delete().eq("id", id);
+    const { error } = await supabase.from("list_items").delete().eq("id", item.id);
+
+    if (error) {
+      setItems((current) => (current.some((i) => i.id === item.id) ? current : [...current, item]));
+    }
   }
 
   async function signOut() {
@@ -190,12 +246,13 @@ export default function ShoppingListView({
             autoFocus
             value={newItem}
             onChange={(e) => setNewItem(e.target.value)}
-            placeholder="Add an item..."
+            placeholder="Add an item... (EN or RO)"
             className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none"
           />
           <button
             type="submit"
-            className="shrink-0 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+            disabled={isAdding || !newItem.trim()}
+            className="shrink-0 touch-manipulation rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-40"
           >
             Add
           </button>
@@ -213,7 +270,7 @@ export default function ShoppingListView({
                 <button
                   key={c.id}
                   onClick={() => addItemByName(c.name)}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm hover:border-gray-300 hover:bg-gray-50 sm:shrink"
+                  className="flex shrink-0 touch-manipulation items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm hover:border-gray-300 hover:bg-gray-50 sm:shrink"
                 >
                   <span>{getItemIcon(c.name)}</span>
                   {c.name}
@@ -259,25 +316,50 @@ function ItemRow({
 }: {
   item: ShoppingItem;
   onToggle: (item: ShoppingItem) => void;
-  onDelete: (id: string) => void;
+  onDelete: (item: ShoppingItem) => void;
 }) {
   return (
-    <li className="flex items-center gap-3 rounded-lg bg-white px-4 py-3 shadow-sm">
-      <input
-        type="checkbox"
-        checked={item.is_checked}
-        onChange={() => onToggle(item)}
-        className="h-5 w-5 shrink-0 rounded border-gray-300"
-      />
-      <span className="shrink-0 text-lg leading-none">{getItemIcon(item.name)}</span>
-      <span
-        className={`flex-1 truncate text-sm ${item.is_checked ? "text-gray-400 line-through" : "text-gray-900"}`}
-      >
-        {item.name}
-      </span>
+    <li
+      className={`flex items-center gap-1 rounded-xl pr-2 transition-colors ${
+        item.is_checked ? "bg-gray-100" : "bg-white shadow-sm"
+      }`}
+    >
       <button
-        onClick={() => onDelete(item.id)}
-        className="text-gray-300 hover:text-red-500"
+        type="button"
+        onClick={() => onToggle(item)}
+        className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 rounded-xl px-4 py-3 text-left"
+      >
+        <span
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+            item.is_checked
+              ? "border-emerald-600 bg-emerald-600"
+              : "border-gray-300 bg-white"
+          }`}
+        >
+          {item.is_checked && (
+            <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5">
+              <path
+                d="M3 8.5L6.5 12L13 4.5"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </span>
+        <span className="shrink-0 text-lg leading-none">{getItemIcon(item.name)}</span>
+        <span
+          className={`flex-1 truncate text-sm ${
+            item.is_checked ? "text-gray-400 line-through" : "font-medium text-gray-900"
+          }`}
+        >
+          {item.name}
+        </span>
+      </button>
+      <button
+        onClick={() => onDelete(item)}
+        className="shrink-0 touch-manipulation rounded-full p-2.5 text-gray-300 hover:bg-red-50 hover:text-red-500"
         aria-label="Delete item"
       >
         ✕
