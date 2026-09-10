@@ -112,7 +112,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#ece7dc] px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm">
         <h1 className="mb-1 text-2xl font-semibold text-gray-900">Shopping List</h1>
         <p className="mb-6 text-sm text-gray-500">
@@ -165,12 +165,12 @@ function LoginForm() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
             />
             <button
               type="submit"
               disabled={status === "sending"}
-              className="w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              className="w-full rounded-lg bg-[#2b3a55] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1f2c42] disabled:opacity-50"
             >
               {status === "sending" ? "Sending..." : "Send magic link"}
             </button>
@@ -200,7 +200,7 @@ function LoginForm() {
               placeholder="Invite code"
               value={guestCode}
               onChange={(e) => setGuestCode(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
             />
             <button
               type="submit"

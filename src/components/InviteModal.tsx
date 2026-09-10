@@ -49,7 +49,7 @@ export default function InviteModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-[#fffdf7] p-6 text-center shadow-2xl"
+        className="w-full max-w-sm rounded-2xl bg-[#fffdf6] p-6 text-center shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-hand text-2xl text-gray-900">Invite to &quot;{listName}&quot;</h2>
@@ -77,7 +77,7 @@ export default function InviteModal({
           {canShare && (
             <button
               onClick={shareCode}
-              className="touch-manipulation rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white hover:bg-gray-800"
+              className="touch-manipulation rounded-lg bg-[#2b3a55] px-4 py-3 text-sm font-medium text-white hover:bg-[#1f2c42]"
             >
               Share...
             </button>

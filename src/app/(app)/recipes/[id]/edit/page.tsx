@@ -21,7 +21,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
   }
 
   return (
-    <div className="min-h-screen bg-[#d8d3c8] px-4 py-10">
+    <div className="min-h-screen bg-[#ece7dc] px-4 py-10">
       <div className="mx-auto flex max-w-lg flex-col items-center gap-6">
         <div className="flex w-full items-center justify-between">
           <h1 className="font-script text-3xl font-bold text-gray-900">Edit Recipe</h1>

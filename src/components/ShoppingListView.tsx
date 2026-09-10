@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
 import InviteModal from "@/components/InviteModal";
-import SignOutButton from "@/components/SignOutButton";
 import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
 
 export default function ShoppingListView({
@@ -223,46 +221,23 @@ export default function ShoppingListView({
     .sort((a, b) => (b.checked_at ?? "").localeCompare(a.checked_at ?? ""));
 
   return (
-    <div className="min-h-screen bg-[#d8d3c8] px-0 py-0 sm:px-6 sm:py-10">
-      <div className="relative mx-auto min-h-screen w-full max-w-2xl bg-[#fffdf7] shadow-none sm:min-h-0 sm:rounded-lg sm:shadow-xl">
+    <div className="min-h-screen bg-[#ece7dc] px-0 py-0 sm:px-6 sm:py-10">
+      <div className="relative mx-auto min-h-screen w-full max-w-2xl bg-[#fffdf6] shadow-none sm:min-h-0 sm:rounded-lg sm:shadow-xl">
         {/* Notebook margin line */}
         <div className="pointer-events-none absolute top-0 bottom-0 left-10 w-px bg-red-300/70 sm:left-12" />
 
         <header className="relative border-b border-gray-200 px-5 pt-6 pb-4 pl-16 sm:pl-20">
-          <div className="flex items-start justify-between gap-3">
-            <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">{list.name}</h1>
-            <SignOutButton className="mt-1 shrink-0 text-xs text-gray-400 hover:text-gray-600" />
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Link
-              href="/lists"
-              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100"
-            >
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                <path d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
-              </svg>
-              My Lists
-            </Link>
-            <Link
-              href="/recipes"
-              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:border-amber-300 hover:bg-amber-100"
-            >
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                <path d="M4 3a1 1 0 00-1 1v12a1 1 0 001 1h1V3H4zm3 0v14h9a1 1 0 001-1V4a1 1 0 00-1-1H7zm2 3h5v1.5H9V6zm0 3h5v1.5H9V9z" />
-              </svg>
-              Recipes
-            </Link>
-            <button
-              onClick={() => setShowInvite(true)}
-              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"
-            >
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                <path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 000 6h.17A3 3 0 0015 8zM5 10a3 3 0 100 6 3 3 0 000-6zm10 2a3 3 0 100 6 3 3 0 000-6z" />
-                <path d="M7.5 12.5l5-3M7.5 13.5l5 3" stroke="currentColor" strokeWidth="1.2" />
-              </svg>
-              Invite people · {list.invite_code}
-            </button>
-          </div>
+          <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">{list.name}</h1>
+          <button
+            onClick={() => setShowInvite(true)}
+            className="mt-2 flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-400 hover:text-gray-900"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 000 6h.17A3 3 0 0015 8zM5 10a3 3 0 100 6 3 3 0 000-6zm10 2a3 3 0 100 6 3 3 0 000-6z" />
+              <path d="M7.5 12.5l5-3M7.5 13.5l5 3" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+            Invite people · {list.invite_code}
+          </button>
         </header>
 
         <main className="px-5 py-5 pl-16 sm:pl-20">
@@ -273,18 +248,18 @@ export default function ShoppingListView({
               value={newItem}
               onChange={(e) => setNewItem(e.target.value)}
               placeholder="Write an item... (EN or RO)"
-              className="font-hand min-w-0 flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-lg text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
+              className="font-hand min-w-0 flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-lg text-gray-900 placeholder:text-gray-400 focus:border-[#2b3a55] focus:outline-none"
             />
             <input
               value={newQuantity}
               onChange={(e) => setNewQuantity(e.target.value)}
               placeholder="qty"
-              className="font-hand w-16 shrink-0 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-lg text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
+              className="font-hand w-16 shrink-0 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-lg text-gray-900 placeholder:text-gray-400 focus:border-[#2b3a55] focus:outline-none"
             />
             <button
               type="submit"
               disabled={isAdding || !newItem.trim()}
-              className="shrink-0 touch-manipulation rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-40"
+              className="shrink-0 touch-manipulation rounded-lg bg-[#2b3a55] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1f2c42] disabled:opacity-40"
             >
               Add
             </button>
@@ -302,7 +277,7 @@ export default function ShoppingListView({
                   <button
                     key={c.id}
                     onClick={() => addItemByName(c.name)}
-                    className="font-hand flex shrink-0 touch-manipulation items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-base text-amber-900 hover:border-amber-300 hover:bg-amber-100 sm:shrink"
+                    className="font-hand flex shrink-0 touch-manipulation items-center gap-1.5 rounded-full border border-dashed border-gray-300 bg-white px-3 py-1.5 text-base text-gray-700 hover:border-gray-400 hover:bg-gray-50 sm:shrink"
                   >
                     <span>{getItemIcon(c.name)}</span>
                     {c.name}
@@ -372,7 +347,7 @@ function ItemChip({
       >
         <span
           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-            item.is_checked ? "border-blue-800 bg-blue-800" : "border-gray-400 bg-white"
+            item.is_checked ? "border-[#2b3a55] bg-[#2b3a55]" : "border-gray-400 bg-white"
           }`}
         >
           {item.is_checked && (

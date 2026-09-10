@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import CreateOrJoinList from "@/components/CreateOrJoinList";
-import SignOutButton from "@/components/SignOutButton";
 import ListRow from "@/components/ListRow";
 import type { ShoppingList } from "@/lib/types";
 
@@ -27,17 +25,9 @@ export default async function ListsPage() {
     .filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-[#d8d3c8] px-4 py-10">
+    <div className="min-h-screen bg-[#ece7dc] px-4 py-10">
       <div className="mx-auto flex max-w-sm flex-col items-center gap-6">
-        <div className="flex w-full items-center justify-between">
-          <h1 className="font-script text-3xl font-bold text-gray-900">Your Lists</h1>
-          <div className="flex items-center gap-3 text-xs">
-            <Link href="/recipes" className="text-gray-500 hover:text-gray-700">
-              Recipes
-            </Link>
-            <SignOutButton className="text-gray-500 hover:text-gray-700" />
-          </div>
-        </div>
+        <h1 className="w-full font-script text-3xl font-bold text-gray-900">Your Lists</h1>
 
         {lists.length > 0 && (
           <ul className="w-full space-y-2">

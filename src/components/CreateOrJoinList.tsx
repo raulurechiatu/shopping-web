@@ -57,7 +57,7 @@ export default function CreateOrJoinList() {
             onChange={(e) => setName(e.target.value)}
             placeholder="List name"
             required
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
           />
         ) : (
           <input
@@ -65,13 +65,13 @@ export default function CreateOrJoinList() {
             onChange={(e) => setCode(e.target.value)}
             placeholder="Invite code"
             required
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
           />
         )}
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          className="w-full rounded-lg bg-[#2b3a55] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1f2c42] disabled:opacity-50"
         >
           {loading ? "Please wait..." : mode === "create" ? "Create list" : "Join list"}
         </button>

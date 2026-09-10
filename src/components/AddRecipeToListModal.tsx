@@ -97,7 +97,7 @@ export default function AddRecipeToListModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-[#fffdf7] p-6 shadow-2xl"
+        className="w-full max-w-sm rounded-2xl bg-[#fffdf6] p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-hand text-center text-2xl text-gray-900">Add ingredients to a list</h2>
@@ -126,7 +126,7 @@ export default function AddRecipeToListModal({
               <select
                 value={selectedListId}
                 onChange={(e) => setSelectedListId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
               >
                 {userLists.map((list) => (
                   <option key={list.id} value={list.id}>
@@ -142,7 +142,7 @@ export default function AddRecipeToListModal({
               value={newListName}
               onChange={(e) => setNewListName(e.target.value)}
               placeholder="List name"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
             />
           )}
 
@@ -151,7 +151,7 @@ export default function AddRecipeToListModal({
           <button
             type="submit"
             disabled={saving}
-            className="w-full touch-manipulation rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            className="w-full touch-manipulation rounded-lg bg-[#2b3a55] px-4 py-3 text-sm font-medium text-white hover:bg-[#1f2c42] disabled:opacity-50"
           >
             {saving ? "Adding..." : "Add ingredients"}
           </button>
