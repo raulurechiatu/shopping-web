@@ -172,6 +172,7 @@ create table if not exists public.recipes (
   owner_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
   instructions text,
+  invite_code text not null unique default substr(md5(random()::text), 1, 8),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -188,9 +189,6 @@ create table if not exists public.recipe_ingredients (
 alter table public.recipes enable row level security;
 alter table public.recipe_ingredients enable row level security;
 
-create policy "owner can view their recipes" on public.recipes
-  for select using (owner_id = auth.uid());
-
 create policy "owner can insert their recipes" on public.recipes
   for insert with check (owner_id = auth.uid());
 
@@ -202,11 +200,6 @@ create policy "owner can delete their recipes" on public.recipes
 
 -- recipe_ingredients policies join back to recipes (a different table, so
 -- no self-referencing recursion risk like list_members had).
-create policy "owner can view recipe ingredients" on public.recipe_ingredients
-  for select using (
-    exists (select 1 from public.recipes r where r.id = recipe_ingredients.recipe_id and r.owner_id = auth.uid())
-  );
-
 create policy "owner can insert recipe ingredients" on public.recipe_ingredients
   for insert with check (
     exists (select 1 from public.recipes r where r.id = recipe_ingredients.recipe_id and r.owner_id = auth.uid())
@@ -221,3 +214,79 @@ create policy "owner can delete recipe ingredients" on public.recipe_ingredients
   for delete using (
     exists (select 1 from public.recipes r where r.id = recipe_ingredients.recipe_id and r.owner_id = auth.uid())
   );
+
+-- Recipes can be shared read-only via an invite code, mirroring how
+-- lists work but without granting edit/delete rights to the recipient.
+create table if not exists public.recipe_shares (
+  recipe_id uuid not null references public.recipes(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  shared_at timestamptz not null default now(),
+  primary key (recipe_id, user_id)
+);
+
+alter table public.recipe_shares enable row level security;
+
+-- Whether the caller can view a recipe: they own it, or it was shared
+-- with them. SECURITY DEFINER so recipe_shares policies below can use
+-- this without re-triggering their own RLS.
+create or replace function public.can_view_recipe(target_recipe_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.recipes r
+    where r.id = target_recipe_id
+      and (
+        r.owner_id = auth.uid()
+        or exists (
+          select 1 from public.recipe_shares s
+          where s.recipe_id = r.id and s.user_id = auth.uid()
+        )
+      )
+  );
+$$;
+
+create policy "owner or shared user can view recipes" on public.recipes
+  for select using (public.can_view_recipe(id));
+
+create policy "owner or shared user can view recipe ingredients" on public.recipe_ingredients
+  for select using (public.can_view_recipe(recipe_id));
+
+-- recipe_shares: the owner manages shares on their own recipes; a
+-- recipient can see and remove their own share (stop following it).
+create policy "owner can view shares on their recipes" on public.recipe_shares
+  for select using (
+    exists (select 1 from public.recipes r where r.id = recipe_shares.recipe_id and r.owner_id = auth.uid())
+    or user_id = auth.uid()
+  );
+
+create policy "owner can revoke shares on their recipes" on public.recipe_shares
+  for delete using (
+    exists (select 1 from public.recipes r where r.id = recipe_shares.recipe_id and r.owner_id = auth.uid())
+    or user_id = auth.uid()
+  );
+
+-- Join a shared recipe via its invite code (read-only access).
+create or replace function public.join_recipe_by_code(code text)
+returns public.recipes
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_recipe public.recipes;
+begin
+  select * into target_recipe from public.recipes where invite_code = code;
+  if target_recipe.id is null then
+    raise exception 'Invalid invite code';
+  end if;
+  if target_recipe.owner_id <> auth.uid() then
+    insert into public.recipe_shares (recipe_id, user_id) values (target_recipe.id, auth.uid())
+    on conflict do nothing;
+  end if;
+  return target_recipe;
+end;
+$$;

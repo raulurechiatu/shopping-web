@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
-import InviteModal from "@/components/InviteModal";
+import ShareModal from "@/components/ShareModal";
 import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
 
 export default function ShoppingListView({
@@ -247,6 +248,19 @@ export default function ShoppingListView({
         <div className="pointer-events-none absolute top-0 bottom-0 left-10 w-px bg-red-300/70 sm:left-12" />
 
         <header className="relative border-b border-gray-200 px-5 pt-6 pb-4 pl-16 sm:pl-20">
+          <Link
+            href="/lists"
+            className="mb-2 inline-flex touch-manipulation items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path
+                fillRule="evenodd"
+                d="M17 10a.75.75 0 01-.75.75H5.56l4.72 4.72a.75.75 0 11-1.06 1.06l-6-6a.75.75 0 010-1.06l6-6a.75.75 0 111.06 1.06L5.56 9.25H16.25A.75.75 0 0117 10z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Your Lists
+          </Link>
           <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">{list.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
@@ -346,9 +360,15 @@ export default function ShoppingListView({
       </div>
 
       {showInvite && (
-        <InviteModal
-          listName={list.name}
-          inviteCode={list.invite_code}
+        <ShareModal
+          title={`Invite to "${list.name}"`}
+          description="Share a link or code so others can join your list."
+          code={list.invite_code}
+          joinPath={`/join/${list.invite_code}`}
+          mailSubject={`Join my shopping list "${list.name}"`}
+          shareText={(joinUrl) =>
+            `Join my shopping list "${list.name}" so we can shop together.\n\nOpen this link to join instantly: ${joinUrl}\n\nOr enter this invite code in the app: ${list.invite_code}`
+          }
           onClose={() => setShowInvite(false)}
         />
       )}

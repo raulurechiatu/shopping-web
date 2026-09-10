@@ -6,19 +6,23 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
 import AddRecipeToListModal from "@/components/AddRecipeToListModal";
+import ShareModal from "@/components/ShareModal";
 import type { Recipe, RecipeIngredient, ShoppingList } from "@/lib/types";
 
 export default function RecipeDetail({
   recipe,
   ingredients,
   userLists,
+  isOwner,
 }: {
   recipe: Recipe;
   ingredients: RecipeIngredient[];
   userLists: ShoppingList[];
+  isOwner: boolean;
 }) {
   const router = useRouter();
   const [showAddToList, setShowAddToList] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const steps = (recipe.instructions ?? "")
@@ -40,7 +44,23 @@ export default function RecipeDetail({
         <div className="pointer-events-none absolute top-0 bottom-0 left-10 w-px bg-red-300/70 sm:left-12" />
 
         <header className="relative border-b border-gray-200 px-5 pt-6 pb-4 pl-16 sm:pl-20">
+          <Link
+            href="/recipes"
+            className="mb-2 inline-flex touch-manipulation items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path
+                fillRule="evenodd"
+                d="M17 10a.75.75 0 01-.75.75H5.56l4.72 4.72a.75.75 0 11-1.06 1.06l-6-6a.75.75 0 010-1.06l6-6a.75.75 0 111.06 1.06L5.56 9.25H16.25A.75.75 0 0117 10z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Recipes
+          </Link>
           <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">{recipe.name}</h1>
+          {!isOwner && (
+            <p className="mt-1 text-xs text-gray-400">Shared with you — view only</p>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowAddToList(true)}
@@ -48,19 +68,29 @@ export default function RecipeDetail({
             >
               Add ingredients to a list
             </button>
-            <Link
-              href={`/recipes/${recipe.id}/edit`}
-              className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"
-            >
-              Edit
-            </Link>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-400 shadow-sm hover:border-red-300 hover:text-red-500"
-            >
-              Delete
-            </button>
+            {isOwner && (
+              <>
+                <button
+                  onClick={() => setShowShare(true)}
+                  className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"
+                >
+                  Share
+                </button>
+                <Link
+                  href={`/recipes/${recipe.id}/edit`}
+                  className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"
+                >
+                  Edit
+                </Link>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-400 shadow-sm hover:border-red-300 hover:text-red-500"
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </div>
         </header>
 
@@ -109,6 +139,20 @@ export default function RecipeDetail({
           ingredients={ingredients}
           userLists={userLists}
           onClose={() => setShowAddToList(false)}
+        />
+      )}
+
+      {showShare && (
+        <ShareModal
+          title={`Share "${recipe.name}"`}
+          description="Share a link or code so others can view this recipe (read-only)."
+          code={recipe.invite_code}
+          joinPath={`/recipes/join/${recipe.invite_code}`}
+          mailSubject={`Check out my recipe "${recipe.name}"`}
+          shareText={(joinUrl) =>
+            `Check out my recipe "${recipe.name}".\n\nOpen this link to view it: ${joinUrl}\n\nOr enter this code in the app: ${recipe.invite_code}`
+          }
+          onClose={() => setShowShare(false)}
         />
       )}
     </div>

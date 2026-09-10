@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import InviteModal from "@/components/InviteModal";
+import ShareModal from "@/components/ShareModal";
 import type { ShoppingList } from "@/lib/types";
 
 export default function ListRow({ list }: { list: ShoppingList }) {
@@ -25,9 +25,15 @@ export default function ListRow({ list }: { list: ShoppingList }) {
       </button>
 
       {showInvite && (
-        <InviteModal
-          listName={list.name}
-          inviteCode={list.invite_code}
+        <ShareModal
+          title={`Invite to "${list.name}"`}
+          description="Share a link or code so others can join your list."
+          code={list.invite_code}
+          joinPath={`/join/${list.invite_code}`}
+          mailSubject={`Join my shopping list "${list.name}"`}
+          shareText={(joinUrl) =>
+            `Join my shopping list "${list.name}" so we can shop together.\n\nOpen this link to join instantly: ${joinUrl}\n\nOr enter this invite code in the app: ${list.invite_code}`
+          }
           onClose={() => setShowInvite(false)}
         />
       )}

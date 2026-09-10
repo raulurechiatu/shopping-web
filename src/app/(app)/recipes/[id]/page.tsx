@@ -37,5 +37,12 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
     .map((m) => m.lists as unknown as ShoppingList)
     .filter(Boolean);
 
-  return <RecipeDetail recipe={recipe} ingredients={ingredients ?? []} userLists={userLists} />;
+  return (
+    <RecipeDetail
+      recipe={recipe}
+      ingredients={ingredients ?? []}
+      userLists={userLists}
+      isOwner={recipe.owner_id === user.id}
+    />
+  );
 }

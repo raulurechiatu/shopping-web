@@ -30,6 +30,7 @@ export type Recipe = {
   owner_id: string;
   name: string;
   instructions: string | null;
+  invite_code: string;
   created_at: string;
   updated_at: string;
 };

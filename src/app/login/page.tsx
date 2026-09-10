@@ -16,34 +16,42 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const joinCode = searchParams.get("join") ?? "";
+  const recipeCode = searchParams.get("recipe") ?? "";
+  const inviteCode = joinCode || recipeCode;
+  const guestMode: "list" | "recipe" = recipeCode ? "recipe" : "list";
 
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const [showGuestForm, setShowGuestForm] = useState(!!joinCode);
-  const [guestCode, setGuestCode] = useState(joinCode);
+  const [showGuestForm, setShowGuestForm] = useState(!!inviteCode);
+  const [guestCode, setGuestCode] = useState(inviteCode);
   const [guestStatus, setGuestStatus] = useState<"idle" | "joining" | "error">("idle");
   const [guestError, setGuestError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (joinCode) {
+    if (inviteCode) {
       setShowGuestForm(true);
-      setGuestCode(joinCode);
+      setGuestCode(inviteCode);
     }
-  }, [joinCode]);
+  }, [inviteCode]);
+
+  function callbackNext() {
+    if (joinCode) return `/join/${encodeURIComponent(joinCode)}`;
+    if (recipeCode) return `/recipes/join/${encodeURIComponent(recipeCode)}`;
+    return "/";
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("sending");
     setError(null);
 
-    const callbackNext = joinCode ? `/join/${encodeURIComponent(joinCode)}` : "/";
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext)}`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext())}`,
       },
     });
 
@@ -57,12 +65,11 @@ function LoginForm() {
 
   async function handleGoogleSignIn() {
     setError(null);
-    const callbackNext = joinCode ? `/join/${encodeURIComponent(joinCode)}` : "/";
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext)}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext())}`,
       },
     });
 
@@ -91,12 +98,26 @@ function LoginForm() {
       if (anonError) {
         setGuestError(
           anonError.message.toLowerCase().includes("anonymous")
-            ? "Guest access isn't enabled for this list yet."
+            ? "Guest access isn't enabled yet."
             : anonError.message,
         );
         setGuestStatus("error");
         return;
       }
+    }
+
+    if (guestMode === "recipe") {
+      const { data, error: joinError } = await supabase.rpc("join_recipe_by_code", { code });
+      if (joinError) {
+        setGuestError(
+          joinError.message.includes("Invalid") ? "That code doesn't match a recipe." : joinError.message,
+        );
+        setGuestStatus("error");
+        return;
+      }
+      router.push(`/recipes/${data.id}`);
+      router.refresh();
+      return;
     }
 
     const { data, error: joinError } = await supabase.rpc("join_list_by_code", { code });
@@ -116,9 +137,13 @@ function LoginForm() {
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm">
         <h1 className="mb-1 text-2xl font-semibold text-gray-900">Shopping List</h1>
         <p className="mb-6 text-sm text-gray-500">
-          {joinCode
-            ? "You've been invited to a shopping list. Sign in, or join below with no account needed."
-            : "Sign in to keep your shopping list in sync with everyone in your household."}
+          {joinCode &&
+            "You've been invited to a shopping list. Sign in, or join below with no account needed."}
+          {recipeCode &&
+            "You've been invited to view a recipe. Sign in, or view it below with no account needed."}
+          {!joinCode &&
+            !recipeCode &&
+            "Sign in to keep your shopping list in sync with everyone in your household."}
         </p>
 
         <button
@@ -207,11 +232,15 @@ function LoginForm() {
               disabled={guestStatus === "joining"}
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
-              {guestStatus === "joining" ? "Joining..." : "Join as guest"}
+              {guestStatus === "joining"
+                ? "Joining..."
+                : guestMode === "recipe"
+                  ? "View recipe as guest"
+                  : "Join as guest"}
             </button>
             {guestError && <p className="text-sm text-red-600">{guestError}</p>}
             <p className="text-center text-xs text-gray-400">
-              No email needed — you&apos;ll be able to add and check off items right away.
+              No email needed — you&apos;ll get access right away.
             </p>
           </form>
         )}
