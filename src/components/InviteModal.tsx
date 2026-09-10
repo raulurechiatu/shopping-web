@@ -11,14 +11,14 @@ export default function InviteModal({
   inviteCode: string;
   onClose: () => void;
 }) {
-  const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const [copied, setCopied] = useState<"code" | "link" | "message" | null>(null);
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
   const joinUrl =
     typeof window !== "undefined" ? `${window.location.origin}/join/${inviteCode}` : "";
 
   const messageBody = `Join my shopping list "${listName}" so we can shop together.\n\nOpen this link to join instantly: ${joinUrl}\n\nOr enter this invite code in the app: ${inviteCode}`;
 
-  async function copy(text: string, which: "code" | "link") {
+  async function copy(text: string, which: "code" | "link" | "message") {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(which);
@@ -82,18 +82,26 @@ export default function InviteModal({
               Share...
             </button>
           )}
-          <a
-            href={mailtoHref}
+          <button
+            onClick={() => copy(messageBody, "message")}
             className="touch-manipulation rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            Email invite
-          </a>
+            {copied === "message" ? "Copied!" : "Copy invite message"}
+          </button>
           <button
             onClick={() => copy(inviteCode, "code")}
             className="touch-manipulation rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             {copied === "code" ? "Copied!" : "Copy code"}
           </button>
+          <p className="text-xs text-gray-400">
+            Have a mail app set up?{" "}
+            <a href={mailtoHref} className="underline hover:text-gray-600">
+              Open email invite
+            </a>{" "}
+            — if nothing happens, use &quot;Copy invite message&quot; above and paste it into
+            email, WhatsApp, or a text instead.
+          </p>
           <button
             onClick={onClose}
             className="touch-manipulation px-4 py-2 text-sm text-gray-400 hover:text-gray-600"
