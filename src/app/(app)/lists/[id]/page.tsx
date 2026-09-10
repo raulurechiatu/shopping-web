@@ -37,5 +37,12 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
       .limit(30),
   ]);
 
-  return <ShoppingListView list={list} initialItems={items ?? []} initialCatalog={catalog ?? []} />;
+  return (
+    <ShoppingListView
+      list={list}
+      initialItems={items ?? []}
+      initialCatalog={catalog ?? []}
+      isOwner={list.owner_id === user.id}
+    />
+  );
 }

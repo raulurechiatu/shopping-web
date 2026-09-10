@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
 import InviteModal from "@/components/InviteModal";
@@ -10,18 +11,37 @@ export default function ShoppingListView({
   list,
   initialItems,
   initialCatalog,
+  isOwner,
 }: {
   list: ShoppingList;
   initialItems: ShoppingItem[];
   initialCatalog: CatalogItem[];
+  isOwner: boolean;
 }) {
+  const router = useRouter();
   const [items, setItems] = useState<ShoppingItem[]>(initialItems);
   const [catalog, setCatalog] = useState<CatalogItem[]>(initialCatalog);
   const [newItem, setNewItem] = useState("");
   const [newQuantity, setNewQuantity] = useState("");
   const [showInvite, setShowInvite] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleDeleteList() {
+    if (!confirm(`Delete "${list.name}"? This removes it for everyone and can't be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("lists").delete().eq("id", list.id);
+    if (error) {
+      alert(error.message);
+      setDeleting(false);
+      return;
+    }
+    router.push("/lists");
+  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -221,23 +241,34 @@ export default function ShoppingListView({
     .sort((a, b) => (b.checked_at ?? "").localeCompare(a.checked_at ?? ""));
 
   return (
-    <div className="min-h-screen bg-[#ece7dc] px-0 py-0 sm:px-6 sm:py-10">
-      <div className="relative mx-auto min-h-screen w-full max-w-2xl bg-[#fffdf6] shadow-none sm:min-h-0 sm:rounded-lg sm:shadow-xl">
+    <div className="min-h-screen bg-[#f7f6f3] px-0 py-0 sm:px-6 sm:py-10">
+      <div className="relative mx-auto min-h-screen w-full max-w-2xl bg-white shadow-none sm:min-h-0 sm:rounded-lg sm:shadow-xl">
         {/* Notebook margin line */}
         <div className="pointer-events-none absolute top-0 bottom-0 left-10 w-px bg-red-300/70 sm:left-12" />
 
         <header className="relative border-b border-gray-200 px-5 pt-6 pb-4 pl-16 sm:pl-20">
           <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">{list.name}</h1>
-          <button
-            onClick={() => setShowInvite(true)}
-            className="mt-2 flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-400 hover:text-gray-900"
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-              <path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 000 6h.17A3 3 0 0015 8zM5 10a3 3 0 100 6 3 3 0 000-6zm10 2a3 3 0 100 6 3 3 0 000-6z" />
-              <path d="M7.5 12.5l5-3M7.5 13.5l5 3" stroke="currentColor" strokeWidth="1.2" />
-            </svg>
-            Invite people · {list.invite_code}
-          </button>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setShowInvite(true)}
+              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-400 hover:text-gray-900"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                <path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 000 6h.17A3 3 0 0015 8zM5 10a3 3 0 100 6 3 3 0 000-6zm10 2a3 3 0 100 6 3 3 0 000-6z" />
+                <path d="M7.5 12.5l5-3M7.5 13.5l5 3" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+              Invite people · {list.invite_code}
+            </button>
+            {isOwner && (
+              <button
+                onClick={handleDeleteList}
+                disabled={deleting}
+                className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-400 hover:border-red-300 hover:text-red-500"
+              >
+                Delete list
+              </button>
+            )}
+          </div>
         </header>
 
         <main className="px-5 py-5 pl-16 sm:pl-20">

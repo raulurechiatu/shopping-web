@@ -15,7 +15,7 @@ export default async function AccountPage() {
   const isGuest = user.is_anonymous;
 
   return (
-    <div className="min-h-screen bg-[#ece7dc] px-4 py-10">
+    <div className="min-h-screen bg-[#f7f6f3] px-4 py-10">
       <div className="mx-auto flex max-w-sm flex-col items-center gap-6">
         <h1 className="font-script text-3xl font-bold text-gray-900">Account</h1>
 

@@ -49,7 +49,7 @@ export default function InviteModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-[#fffdf6] p-6 text-center shadow-2xl"
+        className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-hand text-2xl text-gray-900">Invite to &quot;{listName}&quot;</h2>

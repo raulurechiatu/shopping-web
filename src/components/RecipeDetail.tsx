@@ -35,8 +35,8 @@ export default function RecipeDetail({
   }
 
   return (
-    <div className="min-h-screen bg-[#ece7dc] px-0 py-0 sm:px-6 sm:py-10">
-      <div className="relative mx-auto min-h-screen w-full max-w-2xl bg-[#fffdf6] shadow-none sm:min-h-0 sm:rounded-lg sm:shadow-xl">
+    <div className="min-h-screen bg-[#f7f6f3] px-0 py-0 sm:px-6 sm:py-10">
+      <div className="relative mx-auto min-h-screen w-full max-w-2xl bg-white shadow-none sm:min-h-0 sm:rounded-lg sm:shadow-xl">
         <div className="pointer-events-none absolute top-0 bottom-0 left-10 w-px bg-red-300/70 sm:left-12" />
 
         <header className="relative border-b border-gray-200 px-5 pt-6 pb-4 pl-16 sm:pl-20">

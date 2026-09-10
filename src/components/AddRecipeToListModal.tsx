@@ -97,7 +97,7 @@ export default function AddRecipeToListModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-[#fffdf6] p-6 shadow-2xl"
+        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="font-hand text-center text-2xl text-gray-900">Add ingredients to a list</h2>
