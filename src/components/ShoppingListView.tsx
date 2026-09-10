@@ -17,35 +17,45 @@ export default function ShoppingListView({
 
   useEffect(() => {
     const supabase = createClient();
+    let channel: ReturnType<typeof supabase.channel> | undefined;
+    let cancelled = false;
 
-    const channel = supabase
-      .channel(`list_items:${list.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "list_items", filter: `list_id=eq.${list.id}` },
-        (payload) => {
-          setItems((current) => {
-            if (payload.eventType === "INSERT") {
-              const incoming = payload.new as ShoppingItem;
-              if (current.some((i) => i.id === incoming.id)) return current;
-              return [...current, incoming];
-            }
-            if (payload.eventType === "UPDATE") {
-              const updated = payload.new as ShoppingItem;
-              return current.map((i) => (i.id === updated.id ? updated : i));
-            }
-            if (payload.eventType === "DELETE") {
-              const removed = payload.old as ShoppingItem;
-              return current.filter((i) => i.id !== removed.id);
-            }
-            return current;
-          });
-        },
-      )
-      .subscribe();
+    // The realtime client only authenticates once the session has been
+    // loaded from cookies. Subscribing before that leaves the socket
+    // anonymous, and RLS then hides every row. Wait for the session first.
+    supabase.auth.getSession().then(() => {
+      if (cancelled) return;
+
+      channel = supabase
+        .channel(`list_items:${list.id}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "list_items", filter: `list_id=eq.${list.id}` },
+          (payload) => {
+            setItems((current) => {
+              if (payload.eventType === "INSERT") {
+                const incoming = payload.new as ShoppingItem;
+                if (current.some((i) => i.id === incoming.id)) return current;
+                return [...current, incoming];
+              }
+              if (payload.eventType === "UPDATE") {
+                const updated = payload.new as ShoppingItem;
+                return current.map((i) => (i.id === updated.id ? updated : i));
+              }
+              if (payload.eventType === "DELETE") {
+                const removed = payload.old as ShoppingItem;
+                return current.filter((i) => i.id !== removed.id);
+              }
+              return current;
+            });
+          },
+        )
+        .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
   }, [list.id]);
 

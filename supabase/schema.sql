@@ -32,11 +32,27 @@ alter table public.lists enable row level security;
 alter table public.list_members enable row level security;
 alter table public.list_items enable row level security;
 
+-- Membership check as a SECURITY DEFINER function. Policies below call this
+-- instead of querying list_members directly from within a list_members
+-- policy, which would otherwise trigger "infinite recursion detected in
+-- policy for relation list_members" (Postgres re-evaluates the same policy
+-- for every row the subquery touches).
+create or replace function public.is_list_member(target_list_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.list_members m
+    where m.list_id = target_list_id and m.user_id = auth.uid()
+  );
+$$;
+
 -- lists: a user can see/manage lists they belong to
 create policy "members can view their lists" on public.lists
-  for select using (
-    exists (select 1 from public.list_members m where m.list_id = lists.id and m.user_id = auth.uid())
-  );
+  for select using (public.is_list_member(id));
 
 create policy "owner can update their list" on public.lists
   for update using (owner_id = auth.uid());
@@ -46,33 +62,23 @@ create policy "owner can delete their list" on public.lists
 
 -- list_members: members can see who else is on their lists
 create policy "members can view membership" on public.list_members
-  for select using (
-    exists (select 1 from public.list_members m where m.list_id = list_members.list_id and m.user_id = auth.uid())
-  );
+  for select using (public.is_list_member(list_id));
 
 create policy "members can leave a list" on public.list_members
   for delete using (user_id = auth.uid());
 
 -- list_items: members can view/add/update/delete items on their lists
 create policy "members can view items" on public.list_items
-  for select using (
-    exists (select 1 from public.list_members m where m.list_id = list_items.list_id and m.user_id = auth.uid())
-  );
+  for select using (public.is_list_member(list_id));
 
 create policy "members can insert items" on public.list_items
-  for insert with check (
-    exists (select 1 from public.list_members m where m.list_id = list_items.list_id and m.user_id = auth.uid())
-  );
+  for insert with check (public.is_list_member(list_id));
 
 create policy "members can update items" on public.list_items
-  for update using (
-    exists (select 1 from public.list_members m where m.list_id = list_items.list_id and m.user_id = auth.uid())
-  );
+  for update using (public.is_list_member(list_id));
 
 create policy "members can delete items" on public.list_items
-  for delete using (
-    exists (select 1 from public.list_members m where m.list_id = list_items.list_id and m.user_id = auth.uid())
-  );
+  for delete using (public.is_list_member(list_id));
 
 -- Atomically create a list and add the creator as a member
 create or replace function public.create_list(list_name text default 'Shopping List')
