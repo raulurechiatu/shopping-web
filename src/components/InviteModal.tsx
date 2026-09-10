@@ -11,14 +11,18 @@ export default function InviteModal({
   inviteCode: string;
   onClose: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
+  const joinUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/join/${inviteCode}` : "";
 
-  async function copyCode() {
+  const messageBody = `Join my shopping list "${listName}" so we can shop together.\n\nOpen this link to join instantly: ${joinUrl}\n\nOr enter this invite code in the app: ${inviteCode}`;
+
+  async function copy(text: string, which: "code" | "link") {
     try {
-      await navigator.clipboard.writeText(inviteCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopied(which);
+      setTimeout(() => setCopied(null), 2000);
     } catch {
       // Clipboard access can fail (permissions, insecure context); ignore.
     }
@@ -28,12 +32,16 @@ export default function InviteModal({
     try {
       await navigator.share({
         title: "Join my shopping list",
-        text: `Join my shopping list "${listName}" — use invite code ${inviteCode} in the app.`,
+        text: messageBody,
       });
     } catch {
       // User cancelled the share sheet or it's unsupported; ignore.
     }
   }
+
+  const mailtoHref = `mailto:?subject=${encodeURIComponent(
+    `Join my shopping list "${listName}"`,
+  )}&body=${encodeURIComponent(messageBody)}`;
 
   return (
     <div
@@ -46,7 +54,7 @@ export default function InviteModal({
       >
         <h2 className="font-hand text-2xl text-gray-900">Invite to &quot;{listName}&quot;</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Share this code so others can join your list.
+          Share a link or code so others can join your list.
         </p>
 
         <div className="mx-auto mt-5 w-fit rounded-xl border-2 border-dashed border-gray-300 bg-white px-6 py-4">
@@ -55,20 +63,36 @@ export default function InviteModal({
           </span>
         </div>
 
+        <button
+          onClick={() => copy(joinUrl, "link")}
+          className="mt-3 flex w-full touch-manipulation items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left"
+        >
+          <span className="flex-1 truncate text-xs text-gray-500">{joinUrl}</span>
+          <span className="shrink-0 text-xs font-medium text-gray-700">
+            {copied === "link" ? "Copied!" : "Copy link"}
+          </span>
+        </button>
+
         <div className="mt-5 flex flex-col gap-2">
           {canShare && (
             <button
               onClick={shareCode}
               className="touch-manipulation rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white hover:bg-gray-800"
             >
-              Share
+              Share...
             </button>
           )}
-          <button
-            onClick={copyCode}
+          <a
+            href={mailtoHref}
             className="touch-manipulation rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            {copied ? "Copied!" : "Copy code"}
+            Email invite
+          </a>
+          <button
+            onClick={() => copy(inviteCode, "code")}
+            className="touch-manipulation rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            {copied === "code" ? "Copied!" : "Copy code"}
           </button>
           <button
             onClick={onClose}

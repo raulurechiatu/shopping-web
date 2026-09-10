@@ -231,23 +231,29 @@ export default function ShoppingListView({
         <header className="relative border-b border-gray-200 px-5 pt-6 pb-4 pl-16 sm:pl-20">
           <div className="flex items-start justify-between gap-3">
             <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">{list.name}</h1>
-            <div className="mt-1 flex shrink-0 items-center gap-3 text-xs">
-              <Link href="/lists" className="text-gray-400 hover:text-gray-600">
-                My Lists
-              </Link>
-              <SignOutButton className="text-gray-400 hover:text-gray-600" />
-            </div>
+            <SignOutButton className="mt-1 shrink-0 text-xs text-gray-400 hover:text-gray-600" />
           </div>
-          <button
-            onClick={() => setShowInvite(true)}
-            className="mt-2 flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-              <path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 000 6h.17A3 3 0 0015 8zM5 10a3 3 0 100 6 3 3 0 000-6zm10 2a3 3 0 100 6 3 3 0 000-6z" />
-              <path d="M7.5 12.5l5-3M7.5 13.5l5 3" stroke="currentColor" strokeWidth="1.2" />
-            </svg>
-            Invite people · {list.invite_code}
-          </button>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Link
+              href="/lists"
+              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                <path d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
+              </svg>
+              My Lists
+            </Link>
+            <button
+              onClick={() => setShowInvite(true)}
+              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                <path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 000 6h.17A3 3 0 0015 8zM5 10a3 3 0 100 6 3 3 0 000-6zm10 2a3 3 0 100 6 3 3 0 000-6z" />
+                <path d="M7.5 12.5l5-3M7.5 13.5l5 3" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+              Invite people · {list.invite_code}
+            </button>
+          </div>
         </header>
 
         <main className="px-5 py-5 pl-16 sm:pl-20">

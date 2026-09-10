@@ -1,30 +1,49 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const joinCode = searchParams.get("join") ?? "";
+
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const [showGuestForm, setShowGuestForm] = useState(false);
-  const [guestCode, setGuestCode] = useState("");
+  const [showGuestForm, setShowGuestForm] = useState(!!joinCode);
+  const [guestCode, setGuestCode] = useState(joinCode);
   const [guestStatus, setGuestStatus] = useState<"idle" | "joining" | "error">("idle");
   const [guestError, setGuestError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (joinCode) {
+      setShowGuestForm(true);
+      setGuestCode(joinCode);
+    }
+  }, [joinCode]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("sending");
     setError(null);
 
+    const callbackNext = joinCode ? `/join/${encodeURIComponent(joinCode)}` : "/";
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext)}`,
       },
     });
 
@@ -38,11 +57,12 @@ export default function LoginPage() {
 
   async function handleGoogleSignIn() {
     setError(null);
+    const callbackNext = joinCode ? `/join/${encodeURIComponent(joinCode)}` : "/";
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext)}`,
       },
     });
 
@@ -79,7 +99,7 @@ export default function LoginPage() {
       }
     }
 
-    const { error: joinError } = await supabase.rpc("join_list_by_code", { code });
+    const { data, error: joinError } = await supabase.rpc("join_list_by_code", { code });
 
     if (joinError) {
       setGuestError(joinError.message.includes("Invalid") ? "That invite code doesn't match a list." : joinError.message);
@@ -87,7 +107,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    router.push(`/lists/${data.id}`);
     router.refresh();
   }
 
@@ -96,7 +116,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm">
         <h1 className="mb-1 text-2xl font-semibold text-gray-900">Shopping List</h1>
         <p className="mb-6 text-sm text-gray-500">
-          Sign in to keep your shopping list in sync with everyone in your household.
+          {joinCode
+            ? "You've been invited to a shopping list. Sign in, or join below with no account needed."
+            : "Sign in to keep your shopping list in sync with everyone in your household."}
         </p>
 
         <button
