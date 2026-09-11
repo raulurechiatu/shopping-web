@@ -249,8 +249,32 @@ as $$
   );
 $$;
 
+-- The recipes SELECT policy is intentionally NOT can_view_recipe(id):
+-- that function re-queries recipes from inside itself, which works for
+-- a plain SELECT but fails an INSERT ... RETURNING against recipes
+-- (the just-inserted row isn't visible yet to the function's own
+-- nested query, per per-command MVCC visibility) — every owner-created
+-- recipe would 42501 on creation. Check ownership directly against the
+-- row, and route only the recipe_shares lookup through a narrower
+-- SECURITY DEFINER helper (needed so it doesn't re-trigger
+-- recipe_shares' own policy, which queries recipes and would recurse).
+create or replace function public.is_recipe_shared_with_me(target_recipe_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.recipe_shares s
+    where s.recipe_id = target_recipe_id and s.user_id = auth.uid()
+  );
+$$;
+
 create policy "owner or shared user can view recipes" on public.recipes
-  for select using (public.can_view_recipe(id));
+  for select using (
+    owner_id = auth.uid() or public.is_recipe_shared_with_me(id)
+  );
 
 create policy "owner or shared user can view recipe ingredients" on public.recipe_ingredients
   for select using (public.can_view_recipe(recipe_id));

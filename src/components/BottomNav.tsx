@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   {
     href: "/lists",
-    label: "Lists",
+    label: "Shopping",
     icon: (active: boolean) => (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
         <rect

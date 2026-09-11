@@ -2,11 +2,30 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import ShareModal from "@/components/ShareModal";
 import type { ShoppingList } from "@/lib/types";
 
-export default function ListRow({ list }: { list: ShoppingList }) {
+export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner: boolean }) {
+  const router = useRouter();
   const [showInvite, setShowInvite] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!confirm(`Delete "${list.name}"? This removes it for everyone and can't be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("lists").delete().eq("id", list.id);
+    if (error) {
+      alert(error.message);
+      setDeleting(false);
+      return;
+    }
+    router.refresh();
+  }
 
   return (
     <li className="flex items-center gap-2 rounded-xl bg-white px-4 py-3.5 shadow-sm">
@@ -23,6 +42,22 @@ export default function ListRow({ list }: { list: ShoppingList }) {
         </svg>
         Invite
       </button>
+      {isOwner && (
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          aria-label="Delete list"
+          className="shrink-0 touch-manipulation rounded-full p-2 text-gray-300 hover:bg-red-50 hover:text-red-500"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+            <path
+              fillRule="evenodd"
+              d="M8.75 1a.75.75 0 00-.75.75V2H4.25a.75.75 0 000 1.5h.312l.61 11.24A2 2 0 007.166 16.5h5.668a2 2 0 001.994-1.76l.61-11.24h.312a.75.75 0 000-1.5H12v-.25a.75.75 0 00-.75-.75h-2.5zM7.5 6.25a.75.75 0 011.5 0v6.5a.75.75 0 01-1.5 0v-6.5zm4.25-.75a.75.75 0 00-.75.75v6.5a.75.75 0 001.5 0v-6.5a.75.75 0 00-.75-.75z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+      )}
 
       {showInvite && (
         <ShareModal

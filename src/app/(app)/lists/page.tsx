@@ -32,7 +32,7 @@ export default async function ListsPage() {
         {lists.length > 0 && (
           <ul className="w-full space-y-2">
             {lists.map((list) => (
-              <ListRow key={list.id} list={list} />
+              <ListRow key={list.id} list={list} isOwner={list.owner_id === user.id} />
             ))}
           </ul>
         )}

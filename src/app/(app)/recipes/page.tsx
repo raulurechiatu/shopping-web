@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import RecipeRow from "@/components/RecipeRow";
 import type { Recipe } from "@/lib/types";
 
 export default async function RecipesPage() {
@@ -39,19 +40,7 @@ export default async function RecipesPage() {
         {recipes.length > 0 && (
           <ul className="w-full space-y-2">
             {recipes.map(({ recipe, isShared }) => (
-              <li key={recipe.id}>
-                <Link
-                  href={`/recipes/${recipe.id}`}
-                  className="flex items-center justify-between gap-2 rounded-xl bg-white px-4 py-3.5 shadow-sm hover:bg-gray-50"
-                >
-                  <span className="font-hand truncate text-lg text-gray-900">{recipe.name}</span>
-                  {isShared && (
-                    <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium tracking-wide text-gray-500 uppercase">
-                      Shared
-                    </span>
-                  )}
-                </Link>
-              </li>
+              <RecipeRow key={recipe.id} recipe={recipe} isShared={isShared} />
             ))}
           </ul>
         )}
