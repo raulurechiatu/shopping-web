@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/lib/ThemeProvider";
 import { DialogProvider } from "@/lib/DialogProvider";
 import { ToastProvider } from "@/lib/ToastProvider";
 import OfflineBanner from "@/components/OfflineBanner";
+import InstallBanner from "@/components/InstallBanner";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import "./globals.css";
 
@@ -79,6 +80,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <DialogProvider>
             <ToastProvider>
               <OfflineBanner />
+              <InstallBanner />
               <ServiceWorkerRegistrar />
               {children}
             </ToastProvider>
