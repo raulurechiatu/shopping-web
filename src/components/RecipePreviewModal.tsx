@@ -38,7 +38,11 @@ export default function RecipePreviewModal({
 
         {recipe.thumbnail && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={recipe.thumbnail} alt="" className="mb-4 h-40 w-full rounded-xl object-cover" />
+          <img
+            src={recipe.thumbnail}
+            alt=""
+            className="mb-4 h-48 w-full rounded-xl bg-gray-100 object-contain dark:bg-gray-800"
+          />
         )}
 
         {recipe.ingredients.length > 0 && (
