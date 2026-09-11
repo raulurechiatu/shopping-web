@@ -29,7 +29,7 @@ export default function JoinRecipePage({ params }: { params: Promise<{ code: str
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) {
+      if (!user || user.is_anonymous) {
         router.replace(`/login?recipe=${encodeURIComponent(code)}`);
         return;
       }

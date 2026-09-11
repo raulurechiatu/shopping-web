@@ -9,6 +9,7 @@ import UserAvatar from "@/components/UserAvatar";
 export default function BottomNav() {
   const pathname = usePathname();
   const user = useCurrentUser();
+  const tabs = NAV_TABS.filter((tab) => tab.href !== "/recipes" || !user?.isAnonymous);
 
   return (
     <nav
@@ -16,7 +17,7 @@ export default function BottomNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="mx-auto flex max-w-2xl items-stretch justify-around">
-        {NAV_TABS.map((tab) => {
+        {tabs.map((tab) => {
           const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
           const isAccount = tab.href === "/account";
           return (

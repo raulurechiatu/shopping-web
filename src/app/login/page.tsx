@@ -24,7 +24,11 @@ function LoginForm() {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const [showGuestForm, setShowGuestForm] = useState(!!inviteCode);
+  // Guest (no-account) access only ever applies to list invites — recipes
+  // are a signed-in-account-only feature, including one shared with you.
+  const allowGuest = guestMode === "list";
+
+  const [showGuestForm, setShowGuestForm] = useState(allowGuest && !!inviteCode);
   const [guestCode, setGuestCode] = useState(inviteCode);
   const [guestStatus, setGuestStatus] = useState<"idle" | "joining" | "error">("idle");
   const [guestError, setGuestError] = useState<string | null>(null);
@@ -34,10 +38,10 @@ function LoginForm() {
 
   useEffect(() => {
     if (inviteCode) {
-      setShowGuestForm(true);
+      if (allowGuest) setShowGuestForm(true);
       setGuestCode(inviteCode);
     }
-  }, [inviteCode]);
+  }, [inviteCode, allowGuest]);
 
   useEffect(() => {
     if (!inviteCode) return;
@@ -123,20 +127,6 @@ function LoginForm() {
       }
     }
 
-    if (guestMode === "recipe") {
-      const { data, error: joinError } = await supabase.rpc("join_recipe_by_code", { code });
-      if (joinError) {
-        setGuestError(
-          joinError.message.includes("Invalid") ? "That code doesn't match a recipe." : joinError.message,
-        );
-        setGuestStatus("error");
-        return;
-      }
-      router.push(`/recipes/${data.id}`);
-      router.refresh();
-      return;
-    }
-
     const { data, error: joinError } = await supabase.rpc("join_list_by_code", { code });
 
     if (joinError) {
@@ -172,11 +162,11 @@ function LoginForm() {
                 <span className="font-medium text-gray-700 dark:text-gray-300">
                   {invitePreview.ownerName ?? "Someone"}
                 </span>{" "}
-                shared the recipe &ldquo;{invitePreview.name}&rdquo; with you. Sign in, or view it below
-                with no account needed.
+                shared the recipe &ldquo;{invitePreview.name}&rdquo; with you. Sign in with an account to
+                view it.
               </>
             ) : (
-              "You've been invited to view a recipe. Sign in, or view it below with no account needed."
+              "You've been invited to view a recipe. Sign in with an account to view it."
             ))}
           {!joinCode &&
             !recipeCode &&
@@ -240,46 +230,46 @@ function LoginForm() {
           </form>
         )}
 
-        <div className="my-4 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
-          <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-          or
-          <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-        </div>
+        {allowGuest && (
+          <>
+            <div className="my-4 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+              <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+              or
+              <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+            </div>
 
-        {!showGuestForm ? (
-          <button
-            type="button"
-            onClick={() => setShowGuestForm(true)}
-            className="w-full text-center text-sm text-gray-500 dark:text-gray-400 underline hover:text-gray-900 dark:hover:text-gray-100"
-          >
-            Have an invite code? Join without an account
-          </button>
-        ) : (
-          <form onSubmit={handleGuestJoin} className="space-y-3">
-            <input
-              type="text"
-              required
-              placeholder="Invite code"
-              value={guestCode}
-              onChange={(e) => setGuestCode(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm focus:border-[var(--accent-food)] focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={guestStatus === "joining"}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
-            >
-              {guestStatus === "joining"
-                ? "Joining..."
-                : guestMode === "recipe"
-                  ? "View recipe as guest"
-                  : "Join as guest"}
-            </button>
-            {guestError && <p className="text-sm text-red-600">{guestError}</p>}
-            <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-              No email needed — you&apos;ll get access right away.
-            </p>
-          </form>
+            {!showGuestForm ? (
+              <button
+                type="button"
+                onClick={() => setShowGuestForm(true)}
+                className="w-full text-center text-sm text-gray-500 dark:text-gray-400 underline hover:text-gray-900 dark:hover:text-gray-100"
+              >
+                Have an invite code? Join without an account
+              </button>
+            ) : (
+              <form onSubmit={handleGuestJoin} className="space-y-3">
+                <input
+                  type="text"
+                  required
+                  placeholder="Invite code"
+                  value={guestCode}
+                  onChange={(e) => setGuestCode(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm focus:border-[var(--accent-food)] focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={guestStatus === "joining"}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {guestStatus === "joining" ? "Joining..." : "Join as guest"}
+                </button>
+                {guestError && <p className="text-sm text-red-600">{guestError}</p>}
+                <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+                  No email needed — you&apos;ll get access right away.
+                </p>
+              </form>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -9,7 +9,9 @@ import UserAvatar from "@/components/UserAvatar";
 export default function TopBar() {
   const pathname = usePathname();
   const user = useCurrentUser();
-  const primaryTabs = NAV_TABS.filter((tab) => tab.href !== "/account");
+  const primaryTabs = NAV_TABS.filter(
+    (tab) => tab.href !== "/account" && (tab.href !== "/recipes" || !user?.isAnonymous),
+  );
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");
 
   return (

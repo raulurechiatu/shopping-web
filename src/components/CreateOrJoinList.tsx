@@ -4,11 +4,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function CreateOrJoinList() {
   const router = useRouter();
   const requireOnline = useOnlineGuard();
-  const [mode, setMode] = useState<"create" | "join">("create");
+  const currentUser = useCurrentUser();
+  // Guests only ever get the list they were invited to — they can join
+  // another by code, but can't spin up their own.
+  const canCreate = !currentUser?.isAnonymous;
+  const [selectedMode, setMode] = useState<"create" | "join">("create");
+  const mode = canCreate ? selectedMode : "join";
+
   const [name, setName] = useState("My Shopping List");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,22 +45,24 @@ export default function CreateOrJoinList() {
 
   return (
     <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-sm">
-      <div className="mb-6 flex gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 p-1 text-sm font-medium">
-        <button
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "create" ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}
-          onClick={() => setMode("create")}
-        >
-          <span>➕</span>
-          Create list
-        </button>
-        <button
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "join" ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}
-          onClick={() => setMode("join")}
-        >
-          <span>🔑</span>
-          Join list
-        </button>
-      </div>
+      {canCreate && (
+        <div className="mb-6 flex gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 p-1 text-sm font-medium">
+          <button
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "create" ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}
+            onClick={() => setMode("create")}
+          >
+            <span>➕</span>
+            Create list
+          </button>
+          <button
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "join" ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}
+            onClick={() => setMode("join")}
+          >
+            <span>🔑</span>
+            Join list
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
         {mode === "create" ? (
