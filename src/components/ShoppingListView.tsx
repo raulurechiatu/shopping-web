@@ -2,7 +2,6 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
 import { CATEGORY_ORDER, getItemCategory, type CategoryId } from "@/lib/itemCategories";
@@ -10,7 +9,6 @@ import { lookupBarcode } from "@/lib/barcodeLookup";
 import { mergeQuantities } from "@/lib/quantityScale";
 import ShareModal from "@/components/ShareModal";
 import BarcodeScanner from "@/components/BarcodeScanner";
-import { useDialog } from "@/lib/DialogProvider";
 import { useToast } from "@/lib/ToastProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import type { ShoppingItem, ShoppingList, UserItem } from "@/lib/types";
@@ -28,8 +26,6 @@ export default function ShoppingListView({
   isOwner: boolean;
   ownerName?: string | null;
 }) {
-  const router = useRouter();
-  const { confirmDialog, alertDialog } = useDialog();
   const { showToast } = useToast();
   const requireOnline = useOnlineGuard();
   const currentUserIdRef = useRef<string | null>(null);
@@ -51,25 +47,8 @@ export default function ShoppingListView({
   const [showFavorites, setShowFavorites] = useState(false);
   const [showBought, setShowBought] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [showCategoryLabels, setShowCategoryLabels] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  async function handleDeleteList() {
-    const ok = await confirmDialog(
-      `Delete "${list.name}"? This removes it for everyone and can't be undone.`,
-    );
-    if (!ok) return;
-    if (!(await requireOnline())) return;
-    setDeleting(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("lists").delete().eq("id", list.id);
-    if (error) {
-      await alertDialog(error.message);
-      setDeleting(false);
-      return;
-    }
-    router.push("/lists");
-  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -432,8 +411,12 @@ export default function ShoppingListView({
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {favorites.length > 0 && (
               <button
-                onClick={() => setShowFavorites(true)}
-                className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 hover:border-gray-400 dark:hover:border-gray-500"
+                onClick={() => setShowFavorites((v) => !v)}
+                className={`flex touch-manipulation items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${
+                  showFavorites
+                    ? "border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-600 dark:bg-amber-950 dark:text-amber-300"
+                    : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-amber-600 dark:text-amber-400 hover:border-gray-400 dark:hover:border-gray-500"
+                }`}
               >
                 ⭐ Favorites ({favorites.length})
               </button>
@@ -456,15 +439,6 @@ export default function ShoppingListView({
             >
               {scanStatus === "looking-up" ? "…" : "📷"} Scan barcode
             </button>
-            {isOwner && (
-              <button
-                onClick={handleDeleteList}
-                disabled={deleting}
-                className="touch-manipulation rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:border-red-300 dark:hover:border-red-800 hover:text-red-500"
-              >
-                🗑️ Delete list
-              </button>
-            )}
           </div>
         </header>
 
@@ -494,6 +468,14 @@ export default function ShoppingListView({
           </form>
 
           {showScanner && <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />}
+
+          {showFavorites && favorites.length > 0 && (
+            <FavoritesRow
+              favorites={favorites}
+              pendingNames={new Set(pending.map((i) => i.name.toLowerCase()))}
+              onAdd={(fav) => addItemByName(fav.name, undefined, fav.category as CategoryId | null)}
+            />
+          )}
 
           {newItem.trim() &&
             (() => {
@@ -538,18 +520,25 @@ export default function ShoppingListView({
           )}
 
           {pending.length > 0 && (
-            <p className="mb-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
-              🛒 {pending.length} item{pending.length === 1 ? "" : "s"} to buy
-            </p>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                🛒 {pending.length} item{pending.length === 1 ? "" : "s"} to buy
+              </p>
+              {pendingByCategory.length > 1 && (
+                <button
+                  onClick={() => setShowCategoryLabels((v) => !v)}
+                  className="touch-manipulation text-xs font-medium text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                >
+                  {showCategoryLabels ? "Hide categories" : "🏷️ Show categories"}
+                </button>
+              )}
+            </div>
           )}
 
-          {/* Category labels flow inline with their items instead of each
-              starting a new block — a category with a single item no
-              longer eats a whole row on its own. */}
           <ul className="flex flex-wrap items-center gap-2.5">
             {pendingByCategory.map((group) => (
               <Fragment key={group.id}>
-                {pendingByCategory.length > 1 && (
+                {showCategoryLabels && pendingByCategory.length > 1 && (
                   <li className="shrink-0 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
                     {group.icon} {group.label}
                   </li>
@@ -587,14 +576,6 @@ export default function ShoppingListView({
           )}
         </main>
       </div>
-
-      {showFavorites && (
-        <FavoritesSheet
-          favorites={favorites}
-          onAdd={(fav) => addItemByName(fav.name, undefined, fav.category as CategoryId | null)}
-          onClose={() => setShowFavorites(false)}
-        />
-      )}
 
       {showInvite && (
         <ShareModal
@@ -689,60 +670,39 @@ function ItemChip({
   );
 }
 
-function FavoritesSheet({
+function FavoritesRow({
   favorites,
+  pendingNames,
   onAdd,
-  onClose,
 }: {
   favorites: UserItem[];
+  pendingNames: Set<string>;
   onAdd: (favorite: UserItem) => void;
-  onClose: () => void;
 }) {
-  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
-
-  function handleAdd(favorite: UserItem) {
-    onAdd(favorite);
-    setAddedIds((current) => new Set(current).add(favorite.id));
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
-      <div
-        className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl dark:bg-gray-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-hand text-2xl text-gray-900 dark:text-gray-100">⭐ Favorites</h2>
-          <button
-            onClick={onClose}
-            className="touch-manipulation rounded-full p-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        </div>
-        <ul className="space-y-1.5">
-          {favorites.map((fav) => {
-            const added = addedIds.has(fav.id);
-            return (
-              <li key={fav.id}>
-                <button
-                  onClick={() => handleAdd(fav)}
-                  className="flex w-full touch-manipulation items-center gap-2 rounded-lg border border-gray-200 px-3 py-3 text-left hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                >
-                  <span className="text-lg">{getItemIcon(fav.name)}</span>
-                  <span className="flex-1 font-hand text-lg text-gray-900 dark:text-gray-100">{fav.name}</span>
-                  <span
-                    className={`shrink-0 text-sm font-medium ${added ? "text-green-600 dark:text-green-400" : "text-[var(--accent-food)]"}`}
-                  >
-                    {added ? "Added ✓" : "+ Add"}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900 dark:bg-amber-950/30">
+      <ul className="flex flex-wrap gap-1.5">
+        {favorites.map((fav) => {
+          const onList = pendingNames.has(fav.name.toLowerCase());
+          return (
+            <li key={fav.id}>
+              <button
+                onClick={() => onAdd(fav)}
+                disabled={onList}
+                className={`flex touch-manipulation items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm ${
+                  onList
+                    ? "border-gray-200 bg-gray-100 text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500"
+                    : "border-amber-300 bg-white text-gray-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-amber-900/40"
+                }`}
+              >
+                <span>{getItemIcon(fav.name)}</span>
+                <span className="font-hand">{fav.name}</span>
+                <span className="text-xs">{onList ? "✓" : "+"}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
