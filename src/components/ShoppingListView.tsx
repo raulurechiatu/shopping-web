@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
-import { CATEGORY_ORDER, CATEGORY_LABELS, getItemCategory, type CategoryId } from "@/lib/itemCategories";
+import { CATEGORY_ORDER, getItemCategory, type CategoryId } from "@/lib/itemCategories";
 import { lookupBarcode } from "@/lib/barcodeLookup";
 import { mergeQuantities } from "@/lib/quantityScale";
 import ShareModal from "@/components/ShareModal";
@@ -47,7 +47,6 @@ export default function ShoppingListView({
   const [showInvite, setShowInvite] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "looking-up">("idle");
-  const [itemQuery, setItemQuery] = useState("");
   const [viewerNames, setViewerNames] = useState<string[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -417,15 +416,19 @@ export default function ShoppingListView({
     return (item.category as CategoryId | null) || getItemCategory(item.name);
   }
 
-  const trimmedItemQuery = itemQuery.trim().toLowerCase();
+  // Typing an item name doubles as a live filter over what's already on
+  // the list — no separate search box needed. An exact match gets called
+  // out below the input, since adding it will merge into that row instead
+  // of creating a new one (see addItemByName).
+  const trimmedNewItem = newItem.trim().toLowerCase();
   function matchesItemQuery(item: ShoppingItem) {
-    if (!trimmedItemQuery) return true;
-    return (
-      item.name.toLowerCase().includes(trimmedItemQuery) ||
-      (item.quantity ?? "").toLowerCase().includes(trimmedItemQuery) ||
-      CATEGORY_LABELS[itemCategoryOf(item)].toLowerCase().includes(trimmedItemQuery)
-    );
+    if (!trimmedNewItem) return true;
+    return item.name.toLowerCase().includes(trimmedNewItem);
   }
+
+  const existingPendingMatch = trimmedNewItem
+    ? items.find((i) => !i.is_checked && i.name.toLowerCase() === trimmedNewItem)
+    : undefined;
 
   const pending = items
     .filter((i) => !i.is_checked && matchesItemQuery(i))
@@ -563,12 +566,12 @@ export default function ShoppingListView({
               );
             })()}
 
-          <input
-            value={itemQuery}
-            onChange={(e) => setItemQuery(e.target.value)}
-            placeholder="🔍 Search items, quantities, categories..."
-            className="font-hand mb-4 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent-food)] focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
-          />
+          {existingPendingMatch && (
+            <p className="font-hand mb-4 -mt-1 text-sm text-amber-600 dark:text-amber-400">
+              ⚠️ Already on your list{existingPendingMatch.quantity ? ` (×${existingPendingMatch.quantity})` : ""}
+              {newQuantity.trim() ? " — adding will update the quantity." : "."}
+            </p>
+          )}
 
           {favorites.length > 0 && !newItem.trim() && (
             <div className="mb-6">
@@ -585,7 +588,7 @@ export default function ShoppingListView({
                   </button>
                 )}
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+              <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
                 {favorites.map((c) => (
                   <CatalogChip
                     key={c.id}
@@ -605,7 +608,7 @@ export default function ShoppingListView({
                   Quick add
                 </p>
               )}
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+              <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
                 {suggestions.map((c) => (
                   <CatalogChip
                     key={c.id}
@@ -624,12 +627,6 @@ export default function ShoppingListView({
             </p>
           )}
 
-          {items.length > 0 && pending.length === 0 && checked.length === 0 && trimmedItemQuery && (
-            <p className="font-hand py-12 text-center text-lg text-gray-400 dark:text-gray-500">
-              No items match &ldquo;{itemQuery}&rdquo;.
-            </p>
-          )}
-
           <div className="space-y-4">
             {pendingByCategory.map((group) => (
               <div key={group.id}>
@@ -640,7 +637,13 @@ export default function ShoppingListView({
                 )}
                 <ul className="flex flex-wrap gap-2">
                   {group.items.map((item) => (
-                    <ItemChip key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+                    <ItemChip
+                      key={item.id}
+                      item={item}
+                      onToggle={toggleItem}
+                      onDelete={deleteItem}
+                      isMatch={item.id === existingPendingMatch?.id}
+                    />
                   ))}
                 </ul>
               </div>
@@ -683,15 +686,21 @@ function ItemChip({
   item,
   onToggle,
   onDelete,
+  isMatch,
 }: {
   item: ShoppingItem;
   onToggle: (item: ShoppingItem) => void;
   onDelete: (item: ShoppingItem) => void;
+  isMatch?: boolean;
 }) {
   return (
     <li
       className={`flex items-center rounded-full border ${
-        item.is_checked ? "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800" : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
+        isMatch
+          ? "border-amber-400 bg-amber-50 ring-2 ring-amber-300 dark:border-amber-500 dark:bg-amber-950 dark:ring-amber-700"
+          : item.is_checked
+            ? "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800"
+            : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
       }`}
     >
       <button
@@ -749,7 +758,7 @@ function CatalogChip({
   onToggleFavorite: () => void;
 }) {
   return (
-    <div className="flex shrink-0 items-center rounded-full border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-500 sm:shrink">
+    <div className="flex shrink-0 items-center rounded-full border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-500">
       <button
         onClick={onAdd}
         className="font-hand flex touch-manipulation items-center gap-1.5 py-1.5 pr-1 pl-3 text-base text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
