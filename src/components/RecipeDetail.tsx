@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon, getTitleIcon } from "@/lib/itemIcons";
+import { scaleQuantity } from "@/lib/quantityScale";
 import AddRecipeToListModal from "@/components/AddRecipeToListModal";
 import ShareModal from "@/components/ShareModal";
 import { useDialog } from "@/lib/DialogProvider";
 import type { Recipe, RecipeIngredient, ShoppingList } from "@/lib/types";
 
 const ACCENT_VAR = { food: "var(--accent-food)", cocktail: "var(--accent-cocktail)" } as const;
+const SCALE_OPTIONS = [0.5, 1, 2, 3];
 
 export default function RecipeDetail({
   recipe,
@@ -30,6 +32,12 @@ export default function RecipeDetail({
   const [showAddToList, setShowAddToList] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [scale, setScale] = useState(1);
+
+  const scaledIngredients = ingredients.map((ing) => ({
+    ...ing,
+    quantity: scaleQuantity(ing.quantity, scale),
+  }));
 
   const isCocktail = recipe.kind === "cocktail";
   const accentVar = ACCENT_VAR[recipe.kind];
@@ -123,14 +131,34 @@ export default function RecipeDetail({
         </header>
 
         <main className="px-5 py-5 pl-16 sm:pl-20">
-          <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
-            Ingredients
-          </p>
-          {ingredients.length === 0 ? (
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
+              Ingredients
+            </p>
+            {ingredients.length > 0 && (
+              <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5 text-xs font-medium dark:bg-gray-800">
+                {SCALE_OPTIONS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setScale(option)}
+                    className={`touch-manipulation rounded-md px-2 py-1 ${
+                      scale === option
+                        ? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100"
+                        : "text-gray-500 dark:text-gray-400"
+                    }`}
+                  >
+                    {option === 0.5 ? "½×" : `${option}×`}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {scaledIngredients.length === 0 ? (
             <p className="font-hand text-lg text-gray-400 dark:text-gray-500">No ingredients yet.</p>
           ) : (
             <ul className="flex flex-wrap gap-2">
-              {ingredients.map((ing) => (
+              {scaledIngredients.map((ing) => (
                 <li
                   key={ing.id}
                   className="font-hand flex items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-base text-gray-900 dark:text-gray-100"
@@ -166,7 +194,7 @@ export default function RecipeDetail({
       {showAddToList && (
         <AddRecipeToListModal
           recipeName={recipe.name}
-          ingredients={ingredients}
+          ingredients={scaledIngredients}
           userLists={userLists}
           onClose={() => setShowAddToList(false)}
         />
