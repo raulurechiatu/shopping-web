@@ -23,6 +23,26 @@ export const NAV_TABS = [
     ),
   },
   {
+    href: "/items",
+    label: "Items",
+    icon: (active: boolean) => (
+      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
+        <path
+          d="M12 3.5l1.6 3.4 3.7.5-2.7 2.6.6 3.7L12 11.9l-3.2 1.8.6-3.7-2.7-2.6 3.7-.5L12 3.5z"
+          stroke="currentColor"
+          strokeWidth={active ? 2 : 1.5}
+          strokeLinejoin="round"
+        />
+        <path
+          d="M5 15.5h14M7 19h10"
+          stroke="currentColor"
+          strokeWidth={active ? 2 : 1.5}
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
     href: "/recipes",
     label: "Recipes",
     icon: (active: boolean) => (
