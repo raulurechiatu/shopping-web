@@ -58,7 +58,7 @@ export default function RecipeRow({ recipe, isShared }: { recipe: Recipe; isShar
             onClick={handleDelete}
             disabled={deleting}
             aria-label={`Delete ${noun}`}
-            className="shrink-0 touch-manipulation rounded-full p-2 text-gray-300 hover:bg-red-50 hover:text-red-500"
+            className="shrink-0 touch-manipulation rounded-full p-2 text-gray-500 hover:bg-red-50 hover:text-red-500"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
               <path

@@ -37,14 +37,14 @@ export default function CreateOrJoinList() {
     <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-sm">
       <div className="mb-6 flex gap-2 rounded-lg bg-gray-100 p-1 text-sm font-medium">
         <button
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "create" ? "bg-white shadow-sm" : "text-gray-500"}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "create" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
           onClick={() => setMode("create")}
         >
           <span>➕</span>
           Create list
         </button>
         <button
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "join" ? "bg-white shadow-sm" : "text-gray-500"}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "join" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
           onClick={() => setMode("join")}
         >
           <span>🔑</span>

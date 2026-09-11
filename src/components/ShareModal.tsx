@@ -95,7 +95,7 @@ export default function ShareModal({
           </button>
           <button
             onClick={onClose}
-            className="touch-manipulation px-4 py-2 text-sm text-gray-400 hover:text-gray-600"
+            className="touch-manipulation px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
           >
             Close
           </button>

@@ -195,7 +195,7 @@ export default function RecipeForm({
               <button
                 type="button"
                 onClick={() => removeIngredientRow(index)}
-                className="shrink-0 touch-manipulation rounded-full p-2 text-gray-300 hover:bg-red-50 hover:text-red-500"
+                className="shrink-0 touch-manipulation rounded-full p-2 text-gray-500 hover:bg-red-50 hover:text-red-500"
                 aria-label="Remove ingredient"
               >
                 ✕
@@ -238,7 +238,7 @@ export default function RecipeForm({
               <button
                 type="button"
                 onClick={() => removeStep(index)}
-                className="shrink-0 touch-manipulation rounded-full p-2 text-gray-300 hover:bg-red-50 hover:text-red-500"
+                className="shrink-0 touch-manipulation rounded-full p-2 text-gray-500 hover:bg-red-50 hover:text-red-500"
                 aria-label="Remove step"
               >
                 ✕

@@ -106,7 +106,7 @@ export default function AddRecipeToListModal({
           <div className="flex gap-2 rounded-lg bg-gray-100 p-1 text-sm font-medium">
             <button
               type="button"
-              className={`flex-1 rounded-md py-2 ${mode === "existing" ? "bg-white shadow-sm" : "text-gray-500"}`}
+              className={`flex-1 rounded-md py-2 ${mode === "existing" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
               onClick={() => setMode("existing")}
               disabled={userLists.length === 0}
             >
@@ -114,7 +114,7 @@ export default function AddRecipeToListModal({
             </button>
             <button
               type="button"
-              className={`flex-1 rounded-md py-2 ${mode === "new" ? "bg-white shadow-sm" : "text-gray-500"}`}
+              className={`flex-1 rounded-md py-2 ${mode === "new" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
               onClick={() => setMode("new")}
             >
               New list
@@ -158,7 +158,7 @@ export default function AddRecipeToListModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-full touch-manipulation px-4 py-2 text-sm text-gray-400 hover:text-gray-600"
+            className="w-full touch-manipulation px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
           >
             Cancel
           </button>

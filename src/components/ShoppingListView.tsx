@@ -280,7 +280,7 @@ export default function ShoppingListView({
               <button
                 onClick={handleDeleteList}
                 disabled={deleting}
-                className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-400 hover:border-red-300 hover:text-red-500"
+                className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 hover:border-red-300 hover:text-red-500"
               >
                 🗑️ Delete list
               </button>
@@ -430,7 +430,7 @@ function ItemChip({
       </button>
       <button
         onClick={() => onDelete(item)}
-        className="shrink-0 touch-manipulation rounded-full p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-500"
+        className="shrink-0 touch-manipulation rounded-full p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-500"
         aria-label="Delete item"
       >
         ✕
