@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
 import { CATEGORY_ORDER, CATEGORY_LABELS, getItemCategory, type CategoryId } from "@/lib/itemCategories";
 import { lookupBarcode } from "@/lib/barcodeLookup";
+import { mergeQuantities } from "@/lib/quantityScale";
 import ShareModal from "@/components/ShareModal";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import { useDialog } from "@/lib/DialogProvider";
@@ -47,6 +48,7 @@ export default function ShoppingListView({
   const [showScanner, setShowScanner] = useState(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "looking-up">("idle");
   const [itemQuery, setItemQuery] = useState("");
+  const [viewerNames, setViewerNames] = useState<string[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +74,7 @@ export default function ShoppingListView({
     const supabase = createClient();
     let itemsChannel: ReturnType<typeof supabase.channel> | undefined;
     let catalogChannel: ReturnType<typeof supabase.channel> | undefined;
+    let presenceChannel: ReturnType<typeof supabase.channel> | undefined;
     let cancelled = false;
 
     // Who's on this list, so toasts can name whoever added something
@@ -172,12 +175,46 @@ export default function ShoppingListView({
           },
         )
         .subscribe();
+
+      // Who else currently has this list open — a lightweight "you're not
+      // alone here" signal, no DB table involved (Realtime Presence is
+      // purely in-memory, tied to the socket connection).
+      const myId = session?.user?.id ?? null;
+      const metadata = session?.user?.user_metadata ?? {};
+      const myName = session?.user?.is_anonymous
+        ? "A guest"
+        : (metadata.full_name as string) ||
+          (metadata.name as string) ||
+          session?.user?.email?.split("@")[0] ||
+          "Someone";
+
+      presenceChannel = supabase.channel(`list_presence:${list.id}`, {
+        config: { presence: { key: myId ?? undefined } },
+      });
+      presenceChannel
+        .on("presence", { event: "sync" }, () => {
+          const state = presenceChannel!.presenceState() as Record<
+            string,
+            { user_id: string; name: string }[]
+          >;
+          const names = Object.values(state)
+            .flat()
+            .filter((p) => p.user_id !== myId)
+            .map((p) => p.name);
+          setViewerNames(names);
+        })
+        .subscribe(async (status) => {
+          if (status === "SUBSCRIBED") {
+            await presenceChannel!.track({ user_id: myId, name: myName });
+          }
+        });
     });
 
     return () => {
       cancelled = true;
       if (itemsChannel) supabase.removeChannel(itemsChannel);
       if (catalogChannel) supabase.removeChannel(catalogChannel);
+      if (presenceChannel) supabase.removeChannel(presenceChannel);
     };
   }, [list.id]);
 
@@ -189,22 +226,79 @@ export default function ShoppingListView({
   const suggestions = useMemo(() => {
     const query = newItem.trim().toLowerCase();
     return [...catalog]
+      .filter((c) => !c.is_favorite)
       .filter((c) => !pendingNames.has(c.name.toLowerCase()))
       .filter((c) => (query ? c.name.toLowerCase().includes(query) : true))
       .sort((a, b) => b.use_count - a.use_count || b.last_used_at.localeCompare(a.last_used_at))
       .slice(0, query ? 6 : 12);
   }, [catalog, pendingNames, newItem]);
 
+  // Favorites always show (not just when recently used) so "usual buys"
+  // stay one tap away even if it's been a while since you last needed one.
+  const favorites = useMemo(() => {
+    return [...catalog]
+      .filter((c) => c.is_favorite)
+      .filter((c) => !pendingNames.has(c.name.toLowerCase()))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [catalog, pendingNames]);
+
+  async function toggleFavorite(catalogItem: CatalogItem) {
+    const nextFavorite = !catalogItem.is_favorite;
+    setCatalog((current) =>
+      current.map((c) => (c.id === catalogItem.id ? { ...c, is_favorite: nextFavorite } : c)),
+    );
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("list_item_catalog")
+      .update({ is_favorite: nextFavorite })
+      .eq("id", catalogItem.id);
+    if (error) {
+      setCatalog((current) =>
+        current.map((c) => (c.id === catalogItem.id ? catalogItem : c)),
+      );
+    }
+  }
+
+  async function addAllFavorites() {
+    for (const fav of favorites) {
+      await addItemByName(fav.name, undefined, fav.category as CategoryId | null);
+    }
+  }
+
   async function addItemByName(rawName: string, rawQuantity?: string, rawCategory?: CategoryId | null) {
     const name = rawName.trim();
     if (!name || isAdding) return;
-    // Someone's already shopping for this — don't create a second row.
-    if (pendingNames.has(name.toLowerCase())) {
+
+    // Someone's already shopping for this — merge into that row instead of
+    // creating a second one for the same item.
+    const existingPending = itemsRef.current.find(
+      (i) => !i.is_checked && i.name.toLowerCase() === name.toLowerCase(),
+    );
+    if (existingPending) {
       setNewItem("");
       setNewQuantity("");
       setNewCategory("");
+      const incomingQuantity = rawQuantity?.trim() || null;
+      const mergedQuantity = mergeQuantities(existingPending.quantity, incomingQuantity);
+      if (!incomingQuantity || mergedQuantity === existingPending.quantity) return;
+      if (!(await requireOnline())) return;
+
+      setItems((current) =>
+        current.map((i) => (i.id === existingPending.id ? { ...i, quantity: mergedQuantity } : i)),
+      );
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("list_items")
+        .update({ quantity: mergedQuantity })
+        .eq("id", existingPending.id);
+      if (error) {
+        setItems((current) =>
+          current.map((i) => (i.id === existingPending.id ? existingPending : i)),
+        );
+      }
       return;
     }
+
     if (!(await requireOnline())) return;
 
     const quantity = rawQuantity?.trim() || null;
@@ -380,6 +474,14 @@ export default function ShoppingListView({
           {!isOwner && ownerName && (
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Created by {ownerName}</p>
           )}
+          {viewerNames.length > 0 && (
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              👀{" "}
+              {viewerNames.length === 1
+                ? `${viewerNames[0]} is here too`
+                : `${viewerNames.length} others are here too`}
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowInvite(true)}
@@ -468,6 +570,34 @@ export default function ShoppingListView({
             className="font-hand mb-4 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent-food)] focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
 
+          {favorites.length > 0 && !newItem.trim() && (
+            <div className="mb-6">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
+                  ⭐ Favorites
+                </p>
+                {favorites.length > 1 && (
+                  <button
+                    onClick={addAllFavorites}
+                    className="font-hand touch-manipulation text-xs font-medium text-[var(--accent-food)] hover:underline"
+                  >
+                    + Add all
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+                {favorites.map((c) => (
+                  <CatalogChip
+                    key={c.id}
+                    item={c}
+                    onAdd={() => addItemByName(c.name, undefined, c.category as CategoryId | null)}
+                    onToggleFavorite={() => toggleFavorite(c)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {suggestions.length > 0 && (
             <div className="mb-6">
               {!newItem.trim() && (
@@ -477,14 +607,12 @@ export default function ShoppingListView({
               )}
               <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
                 {suggestions.map((c) => (
-                  <button
+                  <CatalogChip
                     key={c.id}
-                    onClick={() => addItemByName(c.name, undefined, c.category as CategoryId | null)}
-                    className="font-hand flex shrink-0 touch-manipulation items-center gap-1.5 rounded-full border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-base text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 sm:shrink"
-                  >
-                    <span>{getItemIcon(c.name)}</span>
-                    {c.name}
-                  </button>
+                    item={c}
+                    onAdd={() => addItemByName(c.name, undefined, c.category as CategoryId | null)}
+                    onToggleFavorite={() => toggleFavorite(c)}
+                  />
                 ))}
               </div>
             </div>
@@ -608,5 +736,39 @@ function ItemChip({
         ✕
       </button>
     </li>
+  );
+}
+
+function CatalogChip({
+  item,
+  onAdd,
+  onToggleFavorite,
+}: {
+  item: CatalogItem;
+  onAdd: () => void;
+  onToggleFavorite: () => void;
+}) {
+  return (
+    <div className="flex shrink-0 items-center rounded-full border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-500 sm:shrink">
+      <button
+        onClick={onAdd}
+        className="font-hand flex touch-manipulation items-center gap-1.5 py-1.5 pr-1 pl-3 text-base text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+      >
+        <span>{getItemIcon(item.name)}</span>
+        {item.name}
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleFavorite();
+        }}
+        aria-label={item.is_favorite ? "Remove from favorites" : "Add to favorites"}
+        className={`shrink-0 touch-manipulation rounded-full py-1.5 pr-2.5 pl-1 text-sm ${
+          item.is_favorite ? "text-amber-500" : "text-gray-300 dark:text-gray-600 hover:text-amber-500"
+        }`}
+      >
+        {item.is_favorite ? "★" : "☆"}
+      </button>
+    </div>
   );
 }

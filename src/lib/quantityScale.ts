@@ -34,3 +34,30 @@ export function scaleQuantity(quantity: string | null, multiplier: number): stri
   const rest = quantity.slice(match[0].length);
   return `${formatNumber(value * multiplier)}${rest ? ` ${rest}`.replace(/\s+/g, " ").trimEnd() : ""}`.trimEnd();
 }
+
+// Combines two quantities for the same item, e.g. when someone adds
+// "milk" and it's already on the list. Sums the leading numbers when
+// both sides have one and share the same trailing unit text ("2 kg" +
+// "1 kg" -> "3 kg"); otherwise falls back to just concatenating them so
+// nothing is silently lost ("to taste" + "2 tbsp" -> "to taste + 2 tbsp").
+export function mergeQuantities(a: string | null, b: string | null): string | null {
+  if (!a) return b;
+  if (!b) return a;
+  if (a.trim().toLowerCase() === b.trim().toLowerCase()) return a.trim();
+
+  const aMatch = a.match(LEADING_NUMBER);
+  const bMatch = b.match(LEADING_NUMBER);
+  const aValue = parseLeadingNumber(a);
+  const bValue = parseLeadingNumber(b);
+
+  if (aValue !== null && bValue !== null && aMatch && bMatch) {
+    const aRest = a.slice(aMatch[0].length).trim();
+    const bRest = b.slice(bMatch[0].length).trim();
+    if (aRest.toLowerCase() === bRest.toLowerCase()) {
+      const sum = formatNumber(aValue + bValue);
+      return aRest ? `${sum} ${aRest}` : sum;
+    }
+  }
+
+  return `${a.trim()} + ${b.trim()}`;
+}

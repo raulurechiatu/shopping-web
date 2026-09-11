@@ -25,6 +25,7 @@ export type CatalogItem = {
   use_count: number;
   last_used_at: string;
   category: string | null;
+  is_favorite: boolean;
 };
 
 export type RecipeKind = "food" | "cocktail";
