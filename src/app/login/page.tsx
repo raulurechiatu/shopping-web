@@ -28,6 +28,9 @@ function LoginForm() {
   const [guestCode, setGuestCode] = useState(inviteCode);
   const [guestStatus, setGuestStatus] = useState<"idle" | "joining" | "error">("idle");
   const [guestError, setGuestError] = useState<string | null>(null);
+  const [invitePreview, setInvitePreview] = useState<{ name: string; ownerName: string | null } | null>(
+    null,
+  );
 
   useEffect(() => {
     if (inviteCode) {
@@ -35,6 +38,20 @@ function LoginForm() {
       setGuestCode(inviteCode);
     }
   }, [inviteCode]);
+
+  useEffect(() => {
+    if (!inviteCode) return;
+    const supabase = createClient();
+    const rpcName = guestMode === "recipe" ? "get_recipe_invite_preview" : "get_list_invite_preview";
+    supabase.rpc(rpcName, { code: inviteCode }).then(({ data }) => {
+      const row = data?.[0];
+      if (!row) return;
+      setInvitePreview({
+        name: guestMode === "recipe" ? row.recipe_name : row.list_name,
+        ownerName: row.owner_name,
+      });
+    });
+  }, [inviteCode, guestMode]);
 
   function callbackNext() {
     if (joinCode) return `/join/${encodeURIComponent(joinCode)}`;
@@ -138,9 +155,29 @@ function LoginForm() {
         <h1 className="mb-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">Shopping List</h1>
         <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
           {joinCode &&
-            "You've been invited to a shopping list. Sign in, or join below with no account needed."}
+            (invitePreview ? (
+              <>
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  {invitePreview.ownerName ?? "Someone"}
+                </span>{" "}
+                invited you to the list &ldquo;{invitePreview.name}&rdquo;. Sign in, or join below with
+                no account needed.
+              </>
+            ) : (
+              "You've been invited to a shopping list. Sign in, or join below with no account needed."
+            ))}
           {recipeCode &&
-            "You've been invited to view a recipe. Sign in, or view it below with no account needed."}
+            (invitePreview ? (
+              <>
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  {invitePreview.ownerName ?? "Someone"}
+                </span>{" "}
+                shared the recipe &ldquo;{invitePreview.name}&rdquo; with you. Sign in, or view it below
+                with no account needed.
+              </>
+            ) : (
+              "You've been invited to view a recipe. Sign in, or view it below with no account needed."
+            ))}
           {!joinCode &&
             !recipeCode &&
             "Sign in to keep your shopping list in sync with everyone in your household."}

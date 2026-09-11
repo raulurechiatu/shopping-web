@@ -17,11 +17,13 @@ export default function RecipeDetail({
   ingredients,
   userLists,
   isOwner,
+  ownerName,
 }: {
   recipe: Recipe;
   ingredients: RecipeIngredient[];
   userLists: ShoppingList[];
   isOwner: boolean;
+  ownerName?: string | null;
 }) {
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
@@ -81,7 +83,11 @@ export default function RecipeDetail({
             <span className="mr-1">{titleIcon}</span>
             {recipe.name}
           </h1>
-          {!isOwner && <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Shared with you — view only</p>}
+          {!isOwner && (
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              Shared by {ownerName ?? "someone"} — view only
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowAddToList(true)}

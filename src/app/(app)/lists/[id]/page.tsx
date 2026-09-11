@@ -22,7 +22,9 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
     redirect("/lists");
   }
 
-  const [{ data: items }, { data: catalog }] = await Promise.all([
+  const isOwner = list.owner_id === user.id;
+
+  const [{ data: items }, { data: catalog }, { data: ownerProfile }] = await Promise.all([
     supabase
       .from("list_items")
       .select("*")
@@ -35,6 +37,9 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
       .order("use_count", { ascending: false })
       .order("last_used_at", { ascending: false })
       .limit(30),
+    isOwner
+      ? Promise.resolve({ data: null })
+      : supabase.from("profiles").select("full_name").eq("id", list.owner_id).maybeSingle(),
   ]);
 
   return (
@@ -42,7 +47,8 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
       list={list}
       initialItems={items ?? []}
       initialCatalog={catalog ?? []}
-      isOwner={list.owner_id === user.id}
+      isOwner={isOwner}
+      ownerName={ownerProfile?.full_name ?? null}
     />
   );
 }

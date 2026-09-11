@@ -14,11 +14,13 @@ export default function ShoppingListView({
   initialItems,
   initialCatalog,
   isOwner,
+  ownerName,
 }: {
   list: ShoppingList;
   initialItems: ShoppingItem[];
   initialCatalog: CatalogItem[];
   isOwner: boolean;
+  ownerName?: string | null;
 }) {
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
@@ -268,6 +270,9 @@ export default function ShoppingListView({
             <span className="mr-1">{getItemIcon(list.name)}</span>
             {list.name}
           </h1>
+          {!isOwner && ownerName && (
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Created by {ownerName}</p>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowInvite(true)}

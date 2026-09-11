@@ -33,6 +33,11 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
     redirect("/recipes");
   }
 
+  const isOwner = recipe.owner_id === user.id;
+  const ownerProfile = isOwner
+    ? null
+    : (await supabase.from("profiles").select("full_name").eq("id", recipe.owner_id).maybeSingle()).data;
+
   const userLists = (memberships ?? [])
     .map((m) => m.lists as unknown as ShoppingList)
     .filter(Boolean);
@@ -42,7 +47,8 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
       recipe={recipe}
       ingredients={ingredients ?? []}
       userLists={userLists}
-      isOwner={recipe.owner_id === user.id}
+      isOwner={isOwner}
+      ownerName={ownerProfile?.full_name ?? null}
     />
   );
 }
