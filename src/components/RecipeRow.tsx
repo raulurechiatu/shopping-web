@@ -12,6 +12,7 @@ export default function RecipeRow({ recipe, isShared }: { recipe: Recipe; isShar
   const router = useRouter();
   const [showShare, setShowShare] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [removed, setRemoved] = useState(false);
   const isCocktail = recipe.kind === "cocktail";
   const noun = isCocktail ? "cocktail" : "recipe";
   const titleIcon = getTitleIcon(recipe.name, isCocktail ? "🍸" : "🍽️");
@@ -19,15 +20,22 @@ export default function RecipeRow({ recipe, isShared }: { recipe: Recipe; isShar
   async function handleDelete() {
     if (!confirm(`Delete "${recipe.name}"? This can't be undone.`)) return;
     setDeleting(true);
+    // Hide the row immediately rather than waiting on the network round
+    // trip — router.refresh() would re-fetch the whole list from the
+    // server before anything visually changed.
+    setRemoved(true);
     const supabase = createClient();
     const { error } = await supabase.from("recipes").delete().eq("id", recipe.id);
     if (error) {
       alert(error.message);
+      setRemoved(false);
       setDeleting(false);
       return;
     }
     router.refresh();
   }
+
+  if (removed) return null;
 
   return (
     <li className="flex items-center gap-2 rounded-xl bg-white dark:bg-gray-900 px-4 py-3.5 shadow-sm">
