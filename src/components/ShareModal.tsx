@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
+import { useDialog } from "@/lib/DialogProvider";
 
 export default function ShareModal({
   title,
@@ -19,18 +21,63 @@ export default function ShareModal({
   shareText: (joinUrl: string) => string;
   onClose: () => void;
 }) {
+  const { alertDialog } = useDialog();
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
   const joinUrl = typeof window !== "undefined" ? `${window.location.origin}${joinPath}` : "";
   const messageBody = shareText(joinUrl);
 
+  useEffect(() => {
+    if (!joinUrl) return;
+    let cancelled = false;
+    QRCode.toDataURL(joinUrl, { width: 200, margin: 1 })
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
+      })
+      .catch(() => {
+        // Non-critical — the code and link still work without it.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [joinUrl]);
+
+  // navigator.clipboard.writeText can fail silently (insecure context,
+  // permissions, or inside an installed iOS PWA), so fall back to the
+  // legacy execCommand approach, and only if both fail do we tell the user
+  // instead of the button just doing nothing.
   async function copy(text: string, which: "code" | "link") {
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(which);
-      setTimeout(() => setCopied(null), 2000);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        setCopied(which);
+        setTimeout(() => setCopied(null), 2000);
+        return;
+      }
+      throw new Error("Clipboard API unavailable");
     } catch {
-      // Clipboard access can fail (permissions, insecure context); ignore.
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      let ok = false;
+      try {
+        ok = document.execCommand("copy");
+      } catch {
+        ok = false;
+      }
+      document.body.removeChild(textarea);
+
+      if (ok) {
+        setCopied(which);
+        setTimeout(() => setCopied(null), 2000);
+      } else {
+        await alertDialog(`Couldn't copy automatically. Here it is to copy by hand:\n\n${text}`);
+      }
     }
   }
 
@@ -61,6 +108,13 @@ export default function ShareModal({
             {code}
           </span>
         </div>
+
+        {qrDataUrl && (
+          <div className="mx-auto mt-3 w-fit rounded-xl bg-white p-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrDataUrl} alt={`QR code for ${joinUrl}`} width={160} height={160} />
+          </div>
+        )}
 
         <button
           onClick={() => copy(joinUrl, "link")}
