@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import RecipesGrid from "@/components/RecipesGrid";
 import DiscoverRecipes from "@/components/DiscoverRecipes";
+import WhatCanIMake from "@/components/WhatCanIMake";
 import type { Recipe, RecipeKind } from "@/lib/types";
 
 const ACCENT: Record<RecipeKind, string> = { food: "#2b3a55", cocktail: "#6b3fa0" };
@@ -58,6 +59,15 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
   const accent = ACCENT[kind];
   const noun = isCocktail ? "cocktail" : "recipe";
 
+  // "What can I make?" pantry signal — whatever's on the shopping lists
+  // this user belongs to, food and checked/pending alike.
+  const { data: memberLists } = await supabase.from("list_members").select("list_id").eq("user_id", user.id);
+  const listIds = (memberLists ?? []).map((m) => m.list_id);
+  const { data: pantryRows } = listIds.length
+    ? await supabase.from("list_items").select("name").in("list_id", listIds)
+    : { data: [] };
+  const pantryItems = Array.from(new Set((pantryRows ?? []).map((r) => r.name)));
+
   return (
     <div className="min-h-screen bg-[#f7f6f3] dark:bg-[#14171c] px-4 py-10">
       <div className="mx-auto flex max-w-sm flex-col items-center gap-6">
@@ -103,6 +113,8 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
         >
           ➕ New {noun}
         </Link>
+
+        <WhatCanIMake kind={kind} pantryItems={pantryItems} />
 
         <DiscoverRecipes kind={kind} />
       </div>

@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { searchMealRecipes, searchCocktailRecipes, type DiscoveredRecipe } from "@/lib/recipeDiscovery";
+import {
+  searchMealRecipes,
+  searchCocktailRecipes,
+  importDiscoveredRecipe,
+  type DiscoveredRecipe,
+} from "@/lib/recipeDiscovery";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import { useDialog } from "@/lib/DialogProvider";
 import type { RecipeKind } from "@/lib/types";
@@ -21,7 +26,6 @@ export default function DiscoverRecipes({ kind }: { kind: RecipeKind }) {
   const [searched, setSearched] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
   const requestIdRef = useRef(0);
-  const noun = kind === "cocktail" ? "cocktail" : "recipe";
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -59,41 +63,15 @@ export default function DiscoverRecipes({ kind }: { kind: RecipeKind }) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const instructions = recipe.instructions
-      .split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .join("\n");
+    const result = await importDiscoveredRecipe(supabase, recipe, kind, user?.id);
 
-    const { data: created, error } = await supabase
-      .from("recipes")
-      .insert({ name: recipe.name, instructions: instructions || null, owner_id: user?.id, kind })
-      .select()
-      .single();
-
-    if (error || !created) {
-      await alertDialog(error?.message ?? `Couldn't import this ${noun}.`);
+    if ("error" in result) {
+      await alertDialog(result.error);
       setImportingId(null);
       return;
     }
 
-    if (recipe.ingredients.length > 0) {
-      const { error: ingredientsError } = await supabase.from("recipe_ingredients").insert(
-        recipe.ingredients.map((ing, index) => ({
-          recipe_id: created.id,
-          name: ing.name,
-          quantity: ing.quantity,
-          position: index,
-        })),
-      );
-      if (ingredientsError) {
-        await alertDialog(ingredientsError.message);
-        setImportingId(null);
-        return;
-      }
-    }
-
-    router.push(`/recipes/${created.id}`);
+    router.push(`/recipes/${result.id}`);
   }
 
   return (
