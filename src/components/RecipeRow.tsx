@@ -11,6 +11,8 @@ export default function RecipeRow({ recipe, isShared }: { recipe: Recipe; isShar
   const router = useRouter();
   const [showShare, setShowShare] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const isCocktail = recipe.kind === "cocktail";
+  const noun = isCocktail ? "cocktail" : "recipe";
 
   async function handleDelete() {
     if (!confirm(`Delete "${recipe.name}"? This can't be undone.`)) return;
@@ -28,7 +30,10 @@ export default function RecipeRow({ recipe, isShared }: { recipe: Recipe; isShar
   return (
     <li className="flex items-center gap-2 rounded-xl bg-white px-4 py-3.5 shadow-sm">
       <Link href={`/recipes/${recipe.id}`} className="min-w-0 flex-1">
-        <span className="font-hand block truncate text-lg text-gray-900">{recipe.name}</span>
+        <span className="font-hand block truncate text-lg text-gray-900">
+          {isCocktail && <span className="mr-1">🍸</span>}
+          {recipe.name}
+        </span>
       </Link>
       {isShared && (
         <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium tracking-wide text-gray-500 uppercase">
@@ -50,7 +55,7 @@ export default function RecipeRow({ recipe, isShared }: { recipe: Recipe; isShar
           <button
             onClick={handleDelete}
             disabled={deleting}
-            aria-label="Delete recipe"
+            aria-label={`Delete ${noun}`}
             className="shrink-0 touch-manipulation rounded-full p-2 text-gray-300 hover:bg-red-50 hover:text-red-500"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -67,12 +72,12 @@ export default function RecipeRow({ recipe, isShared }: { recipe: Recipe; isShar
       {showShare && (
         <ShareModal
           title={`Share "${recipe.name}"`}
-          description="Share a link or code so others can view this recipe (read-only)."
+          description={`Share a link or code so others can view this ${noun} (read-only).`}
           code={recipe.invite_code}
           joinPath={`/recipes/join/${recipe.invite_code}`}
-          mailSubject={`Check out my recipe "${recipe.name}"`}
+          mailSubject={`Check out my ${noun} "${recipe.name}"`}
           shareText={(joinUrl) =>
-            `Check out my recipe "${recipe.name}".\n\nOpen this link to view it: ${joinUrl}\n\nOr enter this code in the app: ${recipe.invite_code}`
+            `Check out my ${noun} "${recipe.name}".\n\nOpen this link to view it: ${joinUrl}\n\nOr enter this code in the app: ${recipe.invite_code}`
           }
           onClose={() => setShowShare(false)}
         />

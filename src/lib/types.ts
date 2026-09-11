@@ -25,12 +25,15 @@ export type CatalogItem = {
   last_used_at: string;
 };
 
+export type RecipeKind = "food" | "cocktail";
+
 export type Recipe = {
   id: string;
   owner_id: string;
   name: string;
   instructions: string | null;
   invite_code: string;
+  kind: RecipeKind;
   created_at: string;
   updated_at: string;
 };

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { RecipeKind } from "@/lib/types";
 
 type IngredientDraft = { name: string; quantity: string };
 
@@ -11,18 +12,27 @@ function toSteps(text: string): string[] {
   return lines.length > 0 ? lines : [""];
 }
 
+const ACCENT: Record<RecipeKind, string> = {
+  food: "#2b3a55",
+  cocktail: "#6b3fa0",
+};
+
 export default function RecipeForm({
   recipeId,
+  kind = "food",
   initialName = "",
   initialInstructions = "",
   initialIngredients,
 }: {
   recipeId?: string;
+  kind?: RecipeKind;
   initialName?: string;
   initialInstructions?: string;
   initialIngredients?: IngredientDraft[];
 }) {
   const router = useRouter();
+  const accent = ACCENT[kind];
+  const noun = kind === "cocktail" ? "cocktail" : "recipe";
   const [name, setName] = useState(initialName);
   const [steps, setSteps] = useState<string[]>(
     initialInstructions ? toSteps(initialInstructions) : [""],
@@ -115,12 +125,12 @@ export default function RecipeForm({
 
     const { data: recipe, error: insertError } = await supabase
       .from("recipes")
-      .insert({ name: name.trim(), instructions: instructions || null, owner_id: user?.id })
+      .insert({ name: name.trim(), instructions: instructions || null, owner_id: user?.id, kind })
       .select()
       .single();
 
     if (insertError || !recipe) {
-      setError(insertError?.message ?? "Could not create the recipe.");
+      setError(insertError?.message ?? `Could not create the ${noun}.`);
       setSaving(false);
       return;
     }
@@ -149,14 +159,15 @@ export default function RecipeForm({
     <form onSubmit={handleSubmit} className="w-full max-w-lg space-y-5">
       <div>
         <label className="mb-1 block text-xs font-medium tracking-wide text-gray-400 uppercase">
-          Recipe name
+          {kind === "cocktail" ? "Cocktail name" : "Recipe name"}
         </label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Sunday roast chicken"
+          placeholder={kind === "cocktail" ? "e.g. Old Fashioned" : "e.g. Sunday roast chicken"}
           required
-          className="font-hand w-full border-b-2 border-gray-300 bg-transparent px-1 py-2 text-xl text-gray-900 placeholder:text-gray-400 focus:border-[#2b3a55] focus:outline-none"
+          style={{ ["--accent" as string]: accent }}
+          className="font-hand w-full border-b-2 border-gray-300 bg-transparent px-1 py-2 text-xl text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent)] focus:outline-none"
         />
       </div>
 
@@ -171,13 +182,15 @@ export default function RecipeForm({
                 value={ing.name}
                 onChange={(e) => updateIngredient(index, "name", e.target.value)}
                 placeholder="Ingredient (EN or RO)"
-                className="font-hand min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-[#2b3a55] focus:outline-none"
+                style={{ ["--accent" as string]: accent }}
+                className="font-hand min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-[var(--accent)] focus:outline-none"
               />
               <input
                 value={ing.quantity}
                 onChange={(e) => updateIngredient(index, "quantity", e.target.value)}
                 placeholder="qty"
-                className="font-hand w-16 shrink-0 rounded-lg border border-gray-300 bg-white px-2 py-2 text-base focus:border-[#2b3a55] focus:outline-none"
+                style={{ ["--accent" as string]: accent }}
+                className="font-hand w-16 shrink-0 rounded-lg border border-gray-300 bg-white px-2 py-2 text-base focus:border-[var(--accent)] focus:outline-none"
               />
               <button
                 type="button"
@@ -212,8 +225,15 @@ export default function RecipeForm({
               <input
                 value={step}
                 onChange={(e) => updateStep(index, e.target.value)}
-                placeholder={index === 0 ? "e.g. Preheat oven to 200°C" : "Next step..."}
-                className="font-hand min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-[#2b3a55] focus:outline-none"
+                placeholder={
+                  index === 0
+                    ? kind === "cocktail"
+                      ? "e.g. Add ice to a shaker"
+                      : "e.g. Preheat oven to 200°C"
+                    : "Next step..."
+                }
+                style={{ ["--accent" as string]: accent }}
+                className="font-hand min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-[var(--accent)] focus:outline-none"
               />
               <button
                 type="button"
@@ -240,9 +260,10 @@ export default function RecipeForm({
       <button
         type="submit"
         disabled={saving || !name.trim()}
-        className="w-full touch-manipulation rounded-lg bg-[#2b3a55] px-4 py-3 text-sm font-medium text-white hover:bg-[#1f2c42] disabled:opacity-50"
+        style={{ backgroundColor: accent }}
+        className="w-full touch-manipulation rounded-lg px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
       >
-        {saving ? "Saving..." : recipeId ? "Save changes" : "Create recipe"}
+        {saving ? "Saving..." : recipeId ? "Save changes" : `Create ${noun}`}
       </button>
     </form>
   );

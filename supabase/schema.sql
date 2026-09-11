@@ -173,6 +173,9 @@ create table if not exists public.recipes (
   name text not null,
   instructions text,
   invite_code text not null unique default substr(md5(random()::text), 1, 8),
+  -- Cocktails reuse this same table/logic entirely; "kind" just splits
+  -- them into a separate list view in the app.
+  kind text not null default 'food' check (kind in ('food', 'cocktail')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
