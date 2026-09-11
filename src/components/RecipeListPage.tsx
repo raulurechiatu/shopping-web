@@ -35,6 +35,24 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
     ...shared.map((r) => ({ recipe: r, isShared: true })),
   ].sort((a, b) => b.recipe.created_at.localeCompare(a.recipe.created_at));
 
+  // Pulled in alongside the recipes so the search box can match against
+  // ingredients too, not just the recipe name.
+  const { data: ingredientRows } = recipes.length
+    ? await supabase
+        .from("recipe_ingredients")
+        .select("recipe_id, name, quantity")
+        .in(
+          "recipe_id",
+          recipes.map((r) => r.recipe.id),
+        )
+    : { data: [] };
+
+  const ingredientsByRecipeId = new Map<string, { name: string; quantity: string | null }[]>();
+  for (const ing of ingredientRows ?? []) {
+    if (!ingredientsByRecipeId.has(ing.recipe_id)) ingredientsByRecipeId.set(ing.recipe_id, []);
+    ingredientsByRecipeId.get(ing.recipe_id)!.push(ing);
+  }
+
   const isCocktail = kind === "cocktail";
   const accent = ACCENT[kind];
   const noun = isCocktail ? "cocktail" : "recipe";
@@ -66,7 +84,10 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
         </div>
 
         <RecipesGrid
-          recipes={recipes}
+          recipes={recipes.map((r) => ({
+            ...r,
+            ingredients: ingredientsByRecipeId.get(r.recipe.id) ?? [],
+          }))}
           emptyMessage={
             isCocktail
               ? "No cocktails yet — add one and its ingredients can go straight to a shopping list."
