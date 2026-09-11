@@ -60,16 +60,17 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
   const noun = isCocktail ? "cocktail" : "recipe";
 
   // "What can I make?" pantry signal — prefer items explicitly marked
-  // "have at home" on Manage Items; if nobody's tagged anything yet, fall
-  // back to whatever's on the lists so the feature isn't empty from day one.
-  const { data: memberLists } = await supabase.from("list_members").select("list_id").eq("user_id", user.id);
-  const listIds = (memberLists ?? []).map((m) => m.list_id);
-  const { data: pantryCatalogRows } = listIds.length
-    ? await supabase.from("list_item_catalog").select("name").in("list_id", listIds).eq("is_pantry", true)
-    : { data: [] };
-  let pantryItems = Array.from(new Set((pantryCatalogRows ?? []).map((r) => r.name)));
+  // "have at home" on the Items screen; if nothing's tagged yet, fall back
+  // to whatever's on the lists so the feature isn't empty from day one.
+  const { data: pantryUserItems } = await supabase
+    .from("user_items")
+    .select("name")
+    .eq("is_pantry", true);
+  let pantryItems = Array.from(new Set((pantryUserItems ?? []).map((r) => r.name)));
 
   if (pantryItems.length === 0) {
+    const { data: memberLists } = await supabase.from("list_members").select("list_id").eq("user_id", user.id);
+    const listIds = (memberLists ?? []).map((m) => m.list_id);
     const { data: pantryRows } = listIds.length
       ? await supabase.from("list_items").select("name").in("list_id", listIds)
       : { data: [] };

@@ -10,7 +10,9 @@ export default function TopBar() {
   const pathname = usePathname();
   const user = useCurrentUser();
   const primaryTabs = NAV_TABS.filter(
-    (tab) => tab.href !== "/account" && (tab.href !== "/recipes" || !user?.isAnonymous),
+    (tab) =>
+      tab.href !== "/account" &&
+      (!["/recipes", "/items"].includes(tab.href) || !user?.isAnonymous),
   );
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");
 

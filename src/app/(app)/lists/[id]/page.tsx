@@ -30,12 +30,13 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
       .select("*")
       .eq("list_id", list.id)
       .order("created_at", { ascending: true }),
-    supabase
-      .from("list_item_catalog")
-      .select("*")
-      .eq("list_id", list.id)
-      .eq("is_favorite", true)
-      .order("name", { ascending: true }),
+    user.is_anonymous
+      ? Promise.resolve({ data: [] }) // guests don't get the personal favorites/pantry feature
+      : supabase
+          .from("user_items")
+          .select("*")
+          .eq("is_favorite", true)
+          .order("name", { ascending: true }),
     isOwner
       ? Promise.resolve({ data: null })
       : supabase.from("profiles").select("full_name").eq("id", list.owner_id).maybeSingle(),

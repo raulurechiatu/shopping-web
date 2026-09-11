@@ -13,7 +13,8 @@ import BarcodeScanner from "@/components/BarcodeScanner";
 import { useDialog } from "@/lib/DialogProvider";
 import { useToast } from "@/lib/ToastProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
-import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
+import { useCurrentUser } from "@/lib/useCurrentUser";
+import type { ShoppingItem, ShoppingList, UserItem } from "@/lib/types";
 
 export default function ShoppingListView({
   list,
@@ -24,7 +25,7 @@ export default function ShoppingListView({
 }: {
   list: ShoppingList;
   initialItems: ShoppingItem[];
-  initialFavorites: CatalogItem[];
+  initialFavorites: UserItem[];
   isOwner: boolean;
   ownerName?: string | null;
 }) {
@@ -32,6 +33,7 @@ export default function ShoppingListView({
   const { confirmDialog, alertDialog } = useDialog();
   const { showToast } = useToast();
   const requireOnline = useOnlineGuard();
+  const currentUser = useCurrentUser();
   const currentUserIdRef = useRef<string | null>(null);
   const memberNamesRef = useRef<Map<string, string>>(new Map());
   const selfDeletedIdsRef = useRef<Set<string>>(new Set());
@@ -47,7 +49,7 @@ export default function ShoppingListView({
   const [showScanner, setShowScanner] = useState(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "looking-up">("idle");
   const [viewerNames, setViewerNames] = useState<string[]>([]);
-  const [favorites, setFavorites] = useState<CatalogItem[]>(initialFavorites);
+  const [favorites, setFavorites] = useState<UserItem[]>(initialFavorites);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showBought, setShowBought] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -74,7 +76,7 @@ export default function ShoppingListView({
   useEffect(() => {
     const supabase = createClient();
     let itemsChannel: ReturnType<typeof supabase.channel> | undefined;
-    let catalogChannel: ReturnType<typeof supabase.channel> | undefined;
+    let favoritesChannel: ReturnType<typeof supabase.channel> | undefined;
     let presenceChannel: ReturnType<typeof supabase.channel> | undefined;
     let cancelled = false;
 
@@ -153,28 +155,32 @@ export default function ShoppingListView({
         )
         .subscribe();
 
-      // Keeps the favorites sheet in sync with changes made on the Manage
-      // Items screen (or by another member), without pulling in the full
-      // catalog — just whichever rows are currently favorited.
-      catalogChannel = supabase
-        .channel(`list_item_catalog_favorites:${list.id}`)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "list_item_catalog", filter: `list_id=eq.${list.id}` },
-          (payload) => {
-            setFavorites((current) => {
-              if (payload.eventType === "DELETE") {
-                const removed = payload.old as CatalogItem;
-                return current.filter((c) => c.id !== removed.id);
-              }
-              const incoming = payload.new as CatalogItem;
-              const withoutIncoming = current.filter((c) => c.id !== incoming.id);
-              if (!incoming.is_favorite) return withoutIncoming;
-              return [...withoutIncoming, incoming].sort((a, b) => a.name.localeCompare(b.name));
-            });
-          },
-        )
-        .subscribe();
+      // Keeps the favorites sheet in sync with changes made on the Items
+      // screen (or from the sheet in another tab) — guests don't have a
+      // personal item registry, so skip subscribing for them.
+      if (!session?.user?.is_anonymous) {
+        favoritesChannel = supabase
+          .channel(`user_items_favorites:${session?.user?.id}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "user_items", filter: `owner_id=eq.${session?.user?.id}` },
+            (payload) => {
+              setFavorites((current) => {
+                if (payload.eventType === "DELETE") {
+                  const removedId = (payload.old as Partial<UserItem>)?.id;
+                  if (!removedId) return current;
+                  return current.filter((c) => c.id !== removedId);
+                }
+                const incoming = payload.new as UserItem | undefined;
+                if (!incoming?.id) return current;
+                const withoutIncoming = current.filter((c) => c.id !== incoming.id);
+                if (!incoming.is_favorite) return withoutIncoming;
+                return [...withoutIncoming, incoming].sort((a, b) => a.name.localeCompare(b.name));
+              });
+            },
+          )
+          .subscribe();
+      }
 
       // Who else currently has this list open — a lightweight "you're not
       // alone here" signal, no DB table involved (Realtime Presence is
@@ -213,7 +219,7 @@ export default function ShoppingListView({
     return () => {
       cancelled = true;
       if (itemsChannel) supabase.removeChannel(itemsChannel);
-      if (catalogChannel) supabase.removeChannel(catalogChannel);
+      if (favoritesChannel) supabase.removeChannel(favoritesChannel);
       if (presenceChannel) supabase.removeChannel(presenceChannel);
     };
   }, [list.id]);
@@ -434,12 +440,14 @@ export default function ShoppingListView({
                 ⭐ Favorites ({favorites.length})
               </button>
             )}
-            <Link
-              href="/items"
-              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
-            >
-              📋 Manage items
-            </Link>
+            {!currentUser?.isAnonymous && (
+              <Link
+                href="/items"
+                className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
+              >
+                📋 Manage items
+              </Link>
+            )}
             <button
               onClick={() => setShowInvite(true)}
               className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
@@ -695,13 +703,13 @@ function FavoritesSheet({
   onAdd,
   onClose,
 }: {
-  favorites: CatalogItem[];
-  onAdd: (favorite: CatalogItem) => void;
+  favorites: UserItem[];
+  onAdd: (favorite: UserItem) => void;
   onClose: () => void;
 }) {
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
-  function handleAdd(favorite: CatalogItem) {
+  function handleAdd(favorite: UserItem) {
     onAdd(favorite);
     setAddedIds((current) => new Set(current).add(favorite.id));
   }

@@ -45,15 +45,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Recipes are a signed-in-account-only feature — guests (anonymous
-  // sign-ins) only get the list they were invited to. "/recipes/join"
-  // is exempt here since it's how a real account accepts a recipe share;
-  // it redirects anonymous visitors to /login itself.
+  // Recipes and the personal Items registry are signed-in-account-only —
+  // guests (anonymous sign-ins) only get the list they were invited to.
+  // "/recipes/join" is exempt since it's how a real account accepts a
+  // recipe share; it redirects anonymous visitors to /login itself.
   const isRecipesAppRoute =
     request.nextUrl.pathname.startsWith("/recipes") &&
     !request.nextUrl.pathname.startsWith("/recipes/join");
+  const isItemsRoute = request.nextUrl.pathname.startsWith("/items");
 
-  if (user?.is_anonymous && isRecipesAppRoute) {
+  if (user?.is_anonymous && (isRecipesAppRoute || isItemsRoute)) {
     const url = request.nextUrl.clone();
     url.pathname = "/lists";
     return NextResponse.redirect(url);

@@ -9,7 +9,9 @@ import UserAvatar from "@/components/UserAvatar";
 export default function BottomNav() {
   const pathname = usePathname();
   const user = useCurrentUser();
-  const tabs = NAV_TABS.filter((tab) => tab.href !== "/recipes" || !user?.isAnonymous);
+  const tabs = NAV_TABS.filter(
+    (tab) => !["/recipes", "/items"].includes(tab.href) || !user?.isAnonymous,
+  );
 
   return (
     <nav

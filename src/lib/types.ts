@@ -29,6 +29,16 @@ export type CatalogItem = {
   is_pantry: boolean;
 };
 
+export type UserItem = {
+  id: string;
+  owner_id: string;
+  name: string;
+  category: string | null;
+  is_favorite: boolean;
+  is_pantry: boolean;
+  created_at: string;
+};
+
 export type RecipeKind = "food" | "cocktail";
 
 export type Recipe = {
