@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -543,28 +543,29 @@ export default function ShoppingListView({
             </p>
           )}
 
-          <div className="space-y-5">
+          {/* Category labels flow inline with their items instead of each
+              starting a new block — a category with a single item no
+              longer eats a whole row on its own. */}
+          <ul className="flex flex-wrap items-center gap-2.5">
             {pendingByCategory.map((group) => (
-              <div key={group.id}>
+              <Fragment key={group.id}>
                 {pendingByCategory.length > 1 && (
-                  <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
+                  <li className="shrink-0 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
                     {group.icon} {group.label}
-                  </p>
+                  </li>
                 )}
-                <ul className="flex flex-wrap gap-2.5">
-                  {group.items.map((item) => (
-                    <ItemChip
-                      key={item.id}
-                      item={item}
-                      onToggle={toggleItem}
-                      onDelete={deleteItem}
-                      isMatch={item.id === existingPendingMatch?.id}
-                    />
-                  ))}
-                </ul>
-              </div>
+                {group.items.map((item) => (
+                  <ItemChip
+                    key={item.id}
+                    item={item}
+                    onToggle={toggleItem}
+                    onDelete={deleteItem}
+                    isMatch={item.id === existingPendingMatch?.id}
+                  />
+                ))}
+              </Fragment>
             ))}
-          </div>
+          </ul>
 
           {checked.length > 0 && (
             <div className="mt-8 border-t border-gray-100 pt-4 dark:border-gray-800">
