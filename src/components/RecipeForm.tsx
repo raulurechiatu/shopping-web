@@ -263,7 +263,7 @@ export default function RecipeForm({
         style={{ backgroundColor: accent }}
         className="w-full touch-manipulation rounded-lg px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
       >
-        {saving ? "Saving..." : recipeId ? "Save changes" : `Create ${noun}`}
+        {saving ? "Saving..." : recipeId ? "✅ Save changes" : `➕ Create ${noun}`}
       </button>
     </form>
   );

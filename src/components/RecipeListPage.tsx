@@ -53,7 +53,7 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
               !isCocktail ? "bg-white shadow-sm" : "text-gray-500"
             }`}
           >
-            Food
+            🍽️ Food
           </Link>
           <Link
             href="/recipes/cocktails"
@@ -86,7 +86,7 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
           style={{ backgroundColor: accent }}
           className="w-full max-w-sm touch-manipulation rounded-lg px-4 py-3 text-center text-sm font-medium text-white hover:opacity-90"
         >
-          + New {noun}
+          ➕ New {noun}
         </Link>
       </div>
     </div>

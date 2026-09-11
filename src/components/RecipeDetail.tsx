@@ -43,7 +43,12 @@ export default function RecipeDetail({
     if (!confirm(`Delete "${recipe.name}"? This can't be undone.`)) return;
     setDeleting(true);
     const supabase = createClient();
-    await supabase.from("recipes").delete().eq("id", recipe.id);
+    const { error } = await supabase.from("recipes").delete().eq("id", recipe.id);
+    if (error) {
+      alert(error.message);
+      setDeleting(false);
+      return;
+    }
     router.push(backHref);
   }
 
@@ -80,7 +85,7 @@ export default function RecipeDetail({
               style={{ borderColor: accent, color: accent }}
               className="touch-manipulation rounded-full border bg-white px-3 py-1.5 text-xs font-medium shadow-sm hover:opacity-80"
             >
-              Add ingredients to a list
+              🛒 Add ingredients to a list
             </button>
             {isOwner && (
               <>
@@ -88,20 +93,20 @@ export default function RecipeDetail({
                   onClick={() => setShowShare(true)}
                   className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"
                 >
-                  Share
+                  🔗 Share
                 </button>
                 <Link
                   href={`/recipes/${recipe.id}/edit`}
                   className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"
                 >
-                  Edit
+                  ✏️ Edit
                 </Link>
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
                   className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-400 shadow-sm hover:border-red-300 hover:text-red-500"
                 >
-                  Delete
+                  🗑️ Delete
                 </button>
               </>
             )}

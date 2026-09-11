@@ -11,7 +11,7 @@ export default function SignOutButton({ className }: { className?: string }) {
 
   return (
     <button onClick={signOut} className={className}>
-      Sign out
+      🚪 Sign out
     </button>
   );
 }

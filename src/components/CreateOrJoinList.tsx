@@ -37,15 +37,17 @@ export default function CreateOrJoinList() {
     <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-sm">
       <div className="mb-6 flex gap-2 rounded-lg bg-gray-100 p-1 text-sm font-medium">
         <button
-          className={`flex-1 rounded-md py-2 ${mode === "create" ? "bg-white shadow-sm" : "text-gray-500"}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "create" ? "bg-white shadow-sm" : "text-gray-500"}`}
           onClick={() => setMode("create")}
         >
+          <span>➕</span>
           Create list
         </button>
         <button
-          className={`flex-1 rounded-md py-2 ${mode === "join" ? "bg-white shadow-sm" : "text-gray-500"}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "join" ? "bg-white shadow-sm" : "text-gray-500"}`}
           onClick={() => setMode("join")}
         >
+          <span>🔑</span>
           Join list
         </button>
       </div>
@@ -71,9 +73,19 @@ export default function CreateOrJoinList() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-[#2b3a55] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1f2c42] disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#2b3a55] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1f2c42] disabled:opacity-50"
         >
-          {loading ? "Please wait..." : mode === "create" ? "Create list" : "Join list"}
+          {loading ? (
+            "Please wait..."
+          ) : mode === "create" ? (
+            <>
+              <span>➕</span> Create list
+            </>
+          ) : (
+            <>
+              <span>🔑</span> Join list
+            </>
+          )}
         </button>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </form>
