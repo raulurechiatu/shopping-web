@@ -13,16 +13,18 @@ import BarcodeScanner from "@/components/BarcodeScanner";
 import { useDialog } from "@/lib/DialogProvider";
 import { useToast } from "@/lib/ToastProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
-import type { ShoppingItem, ShoppingList } from "@/lib/types";
+import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
 
 export default function ShoppingListView({
   list,
   initialItems,
+  initialFavorites,
   isOwner,
   ownerName,
 }: {
   list: ShoppingList;
   initialItems: ShoppingItem[];
+  initialFavorites: CatalogItem[];
   isOwner: boolean;
   ownerName?: string | null;
 }) {
@@ -45,6 +47,8 @@ export default function ShoppingListView({
   const [showScanner, setShowScanner] = useState(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "looking-up">("idle");
   const [viewerNames, setViewerNames] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<CatalogItem[]>(initialFavorites);
+  const [showFavorites, setShowFavorites] = useState(false);
   const [showBought, setShowBought] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -70,6 +74,7 @@ export default function ShoppingListView({
   useEffect(() => {
     const supabase = createClient();
     let itemsChannel: ReturnType<typeof supabase.channel> | undefined;
+    let catalogChannel: ReturnType<typeof supabase.channel> | undefined;
     let presenceChannel: ReturnType<typeof supabase.channel> | undefined;
     let cancelled = false;
 
@@ -148,6 +153,29 @@ export default function ShoppingListView({
         )
         .subscribe();
 
+      // Keeps the favorites sheet in sync with changes made on the Manage
+      // Items screen (or by another member), without pulling in the full
+      // catalog — just whichever rows are currently favorited.
+      catalogChannel = supabase
+        .channel(`list_item_catalog_favorites:${list.id}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "list_item_catalog", filter: `list_id=eq.${list.id}` },
+          (payload) => {
+            setFavorites((current) => {
+              if (payload.eventType === "DELETE") {
+                const removed = payload.old as CatalogItem;
+                return current.filter((c) => c.id !== removed.id);
+              }
+              const incoming = payload.new as CatalogItem;
+              const withoutIncoming = current.filter((c) => c.id !== incoming.id);
+              if (!incoming.is_favorite) return withoutIncoming;
+              return [...withoutIncoming, incoming].sort((a, b) => a.name.localeCompare(b.name));
+            });
+          },
+        )
+        .subscribe();
+
       // Who else currently has this list open — a lightweight "you're not
       // alone here" signal, no DB table involved (Realtime Presence is
       // purely in-memory, tied to the socket connection).
@@ -185,6 +213,7 @@ export default function ShoppingListView({
     return () => {
       cancelled = true;
       if (itemsChannel) supabase.removeChannel(itemsChannel);
+      if (catalogChannel) supabase.removeChannel(catalogChannel);
       if (presenceChannel) supabase.removeChannel(presenceChannel);
     };
   }, [list.id]);
@@ -397,6 +426,20 @@ export default function ShoppingListView({
             </p>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
+            {favorites.length > 0 && (
+              <button
+                onClick={() => setShowFavorites(true)}
+                className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 hover:border-gray-400 dark:hover:border-gray-500"
+              >
+                ⭐ Favorites ({favorites.length})
+              </button>
+            )}
+            <Link
+              href={`/lists/${list.id}/items`}
+              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
+            >
+              📋 Manage items
+            </Link>
             <button
               onClick={() => setShowInvite(true)}
               className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
@@ -546,6 +589,14 @@ export default function ShoppingListView({
         </main>
       </div>
 
+      {showFavorites && (
+        <FavoritesSheet
+          favorites={favorites}
+          onAdd={(fav) => addItemByName(fav.name, undefined, fav.category as CategoryId | null)}
+          onClose={() => setShowFavorites(false)}
+        />
+      )}
+
       {showInvite && (
         <ShareModal
           title={`Invite to "${list.name}"`}
@@ -636,5 +687,63 @@ function ItemChip({
         ✕
       </button>
     </li>
+  );
+}
+
+function FavoritesSheet({
+  favorites,
+  onAdd,
+  onClose,
+}: {
+  favorites: CatalogItem[];
+  onAdd: (favorite: CatalogItem) => void;
+  onClose: () => void;
+}) {
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+
+  function handleAdd(favorite: CatalogItem) {
+    onAdd(favorite);
+    setAddedIds((current) => new Set(current).add(favorite.id));
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+      <div
+        className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl dark:bg-gray-900"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-hand text-2xl text-gray-900 dark:text-gray-100">⭐ Favorites</h2>
+          <button
+            onClick={onClose}
+            className="touch-manipulation rounded-full p-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        <ul className="space-y-1.5">
+          {favorites.map((fav) => {
+            const added = addedIds.has(fav.id);
+            return (
+              <li key={fav.id}>
+                <button
+                  onClick={() => handleAdd(fav)}
+                  className="flex w-full touch-manipulation items-center gap-2 rounded-lg border border-gray-200 px-3 py-3 text-left hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  <span className="text-lg">{getItemIcon(fav.name)}</span>
+                  <span className="flex-1 font-hand text-lg text-gray-900 dark:text-gray-100">{fav.name}</span>
+                  <span
+                    className={`shrink-0 text-sm font-medium ${added ? "text-green-600 dark:text-green-400" : "text-[var(--accent-food)]"}`}
+                  >
+                    {added ? "Added ✓" : "+ Add"}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
   );
 }
