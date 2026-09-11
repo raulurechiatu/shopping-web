@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import RecipesGrid from "@/components/RecipesGrid";
+import DiscoverRecipes from "@/components/DiscoverRecipes";
 import type { Recipe, RecipeKind } from "@/lib/types";
 
 const ACCENT: Record<RecipeKind, string> = { food: "#2b3a55", cocktail: "#6b3fa0" };
@@ -102,6 +103,8 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
         >
           ➕ New {noun}
         </Link>
+
+        <DiscoverRecipes kind={kind} />
       </div>
     </div>
   );
