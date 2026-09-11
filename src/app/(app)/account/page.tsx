@@ -2,7 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import SignOutButton from "@/components/SignOutButton";
 import UserAvatar from "@/components/UserAvatar";
 import ThemeToggle from "@/components/ThemeToggle";
+import UnitsPreference from "@/components/UnitsPreference";
 import type { CurrentUser } from "@/lib/useCurrentUser";
+import type { UnitSystem } from "@/lib/unitConversion";
 
 export default async function AccountPage() {
   const supabase = await createClient();
@@ -16,6 +18,10 @@ export default async function AccountPage() {
   }
 
   const isGuest = !!user.is_anonymous;
+  const { data: profile } = isGuest
+    ? { data: null }
+    : await supabase.from("profiles").select("preferred_units").eq("id", user.id).maybeSingle();
+  const preferredUnits = (profile?.preferred_units as UnitSystem | null) ?? null;
   const metadata = user.user_metadata ?? {};
   const currentUser: CurrentUser = {
     id: user.id,
@@ -70,6 +76,15 @@ export default async function AccountPage() {
           </p>
           <ThemeToggle />
         </div>
+
+        {!isGuest && (
+          <div className="w-full rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+            <p className="mb-3 text-xs font-medium tracking-wide text-gray-400 uppercase dark:text-gray-500">
+              Units
+            </p>
+            <UnitsPreference initialUnits={preferredUnits} />
+          </div>
+        )}
       </div>
     </div>
   );

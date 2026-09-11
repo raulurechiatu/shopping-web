@@ -4,6 +4,7 @@ import RecipesGrid from "@/components/RecipesGrid";
 import DiscoverRecipes from "@/components/DiscoverRecipes";
 import WhatCanIMake from "@/components/WhatCanIMake";
 import type { Recipe, RecipeKind } from "@/lib/types";
+import type { UnitSystem } from "@/lib/unitConversion";
 
 const ACCENT: Record<RecipeKind, string> = { food: "#2b3a55", cocktail: "#6b3fa0" };
 
@@ -77,6 +78,11 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
     pantryItems = Array.from(new Set((pantryRows ?? []).map((r) => r.name)));
   }
 
+  const { data: profile } = user.is_anonymous
+    ? { data: null }
+    : await supabase.from("profiles").select("preferred_units").eq("id", user.id).maybeSingle();
+  const preferredUnits = (profile?.preferred_units as UnitSystem | null) ?? null;
+
   return (
     <div className="min-h-screen bg-[#f7f6f3] dark:bg-[#14171c] px-4 py-10">
       <div className="mx-auto flex max-w-sm flex-col items-center gap-6">
@@ -123,9 +129,9 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
           ➕ New {noun}
         </Link>
 
-        <WhatCanIMake kind={kind} pantryItems={pantryItems} />
+        <WhatCanIMake kind={kind} pantryItems={pantryItems} preferredUnits={preferredUnits} />
 
-        <DiscoverRecipes kind={kind} />
+        <DiscoverRecipes kind={kind} preferredUnits={preferredUnits} />
       </div>
     </div>
   );

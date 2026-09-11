@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon, getTitleIcon } from "@/lib/itemIcons";
 import { scaleQuantity } from "@/lib/quantityScale";
+import { convertQuantity, type UnitSystem } from "@/lib/unitConversion";
 import AddRecipeToListModal from "@/components/AddRecipeToListModal";
 import ShareModal from "@/components/ShareModal";
 import { useDialog } from "@/lib/DialogProvider";
@@ -21,12 +22,14 @@ export default function RecipeDetail({
   userLists,
   isOwner,
   ownerName,
+  preferredUnits,
 }: {
   recipe: Recipe;
   ingredients: RecipeIngredient[];
   userLists: ShoppingList[];
   isOwner: boolean;
   ownerName?: string | null;
+  preferredUnits?: UnitSystem | null;
 }) {
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
@@ -38,7 +41,7 @@ export default function RecipeDetail({
 
   const scaledIngredients = ingredients.map((ing) => ({
     ...ing,
-    quantity: scaleQuantity(ing.quantity, scale),
+    quantity: convertQuantity(scaleQuantity(ing.quantity, scale), preferredUnits ?? null),
   }));
 
   const isCocktail = recipe.kind === "cocktail";

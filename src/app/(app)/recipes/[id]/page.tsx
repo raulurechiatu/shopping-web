@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import RecipeDetail from "@/components/RecipeDetail";
 import type { ShoppingList } from "@/lib/types";
+import type { UnitSystem } from "@/lib/unitConversion";
 
 export default async function RecipePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,7 +16,7 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
     return null; // middleware redirects to /login
   }
 
-  const [{ data: recipe }, { data: ingredients }, { data: memberships }] = await Promise.all([
+  const [{ data: recipe }, { data: ingredients }, { data: memberships }, { data: profile }] = await Promise.all([
     supabase.from("recipes").select("*").eq("id", id).maybeSingle(),
     supabase
       .from("recipe_ingredients")
@@ -27,6 +28,9 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
       .select("list_id, lists(*)")
       .eq("user_id", user.id)
       .order("joined_at", { ascending: false }),
+    user.is_anonymous
+      ? Promise.resolve({ data: null })
+      : supabase.from("profiles").select("preferred_units").eq("id", user.id).maybeSingle(),
   ]);
 
   if (!recipe) {
@@ -49,6 +53,7 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
       userLists={userLists}
       isOwner={isOwner}
       ownerName={ownerProfile?.full_name ?? null}
+      preferredUnits={(profile?.preferred_units as UnitSystem | null) ?? null}
     />
   );
 }

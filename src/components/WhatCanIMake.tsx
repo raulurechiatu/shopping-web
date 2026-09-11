@@ -8,8 +8,17 @@ import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import { useDialog } from "@/lib/DialogProvider";
 import RecipePreviewModal from "@/components/RecipePreviewModal";
 import type { RecipeKind } from "@/lib/types";
+import type { UnitSystem } from "@/lib/unitConversion";
 
-export default function WhatCanIMake({ kind, pantryItems }: { kind: RecipeKind; pantryItems: string[] }) {
+export default function WhatCanIMake({
+  kind,
+  pantryItems,
+  preferredUnits,
+}: {
+  kind: RecipeKind;
+  pantryItems: string[];
+  preferredUnits?: UnitSystem | null;
+}) {
   const router = useRouter();
   const requireOnline = useOnlineGuard();
   const { alertDialog } = useDialog();
@@ -131,6 +140,7 @@ export default function WhatCanIMake({ kind, pantryItems }: { kind: RecipeKind; 
           adding={importingId === previewing.recipe.externalId}
           onAdd={() => handleImport(previewing)}
           onClose={() => setPreviewing(null)}
+          preferredUnits={preferredUnits}
         />
       )}
     </div>

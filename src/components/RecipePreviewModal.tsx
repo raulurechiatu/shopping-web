@@ -1,5 +1,6 @@
 "use client";
 
+import { convertQuantity, type UnitSystem } from "@/lib/unitConversion";
 import type { DiscoveredRecipe } from "@/lib/recipeDiscovery";
 import type { RecipeKind } from "@/lib/types";
 
@@ -9,12 +10,14 @@ export default function RecipePreviewModal({
   adding,
   onAdd,
   onClose,
+  preferredUnits,
 }: {
   recipe: DiscoveredRecipe;
   kind: RecipeKind;
   adding: boolean;
   onAdd: () => void;
   onClose: () => void;
+  preferredUnits?: UnitSystem | null;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
@@ -47,7 +50,12 @@ export default function RecipePreviewModal({
               {recipe.ingredients.map((ing, i) => (
                 <li key={i}>
                   {ing.name}
-                  {ing.quantity && <span className="text-gray-400 dark:text-gray-500"> — {ing.quantity}</span>}
+                  {ing.quantity && (
+                    <span className="text-gray-400 dark:text-gray-500">
+                      {" "}
+                      — {convertQuantity(ing.quantity, preferredUnits ?? null)}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

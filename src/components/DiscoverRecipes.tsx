@@ -13,11 +13,18 @@ import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import { useDialog } from "@/lib/DialogProvider";
 import RecipePreviewModal from "@/components/RecipePreviewModal";
 import type { RecipeKind } from "@/lib/types";
+import type { UnitSystem } from "@/lib/unitConversion";
 
 const MIN_QUERY_LENGTH = 2;
 const DEBOUNCE_MS = 350;
 
-export default function DiscoverRecipes({ kind }: { kind: RecipeKind }) {
+export default function DiscoverRecipes({
+  kind,
+  preferredUnits,
+}: {
+  kind: RecipeKind;
+  preferredUnits?: UnitSystem | null;
+}) {
   const router = useRouter();
   const requireOnline = useOnlineGuard();
   const { alertDialog } = useDialog();
@@ -140,6 +147,7 @@ export default function DiscoverRecipes({ kind }: { kind: RecipeKind }) {
         <RecipePreviewModal
           recipe={previewing}
           kind={kind}
+          preferredUnits={preferredUnits}
           adding={importingId === previewing.externalId}
           onAdd={() => handleImport(previewing)}
           onClose={() => setPreviewing(null)}
