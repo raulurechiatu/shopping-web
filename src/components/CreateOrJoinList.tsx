@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useOnlineGuard } from "@/lib/useOnlineStatus";
 
 export default function CreateOrJoinList() {
   const router = useRouter();
+  const requireOnline = useOnlineGuard();
   const [mode, setMode] = useState<"create" | "join">("create");
   const [name, setName] = useState("My Shopping List");
   const [code, setCode] = useState("");
@@ -14,6 +16,7 @@ export default function CreateOrJoinList() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!(await requireOnline())) return;
     setLoading(true);
     setError(null);
     const supabase = createClient();

@@ -7,11 +7,13 @@ import { createClient } from "@/lib/supabase/client";
 import ShareModal from "@/components/ShareModal";
 import { getItemIcon } from "@/lib/itemIcons";
 import { useDialog } from "@/lib/DialogProvider";
+import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import type { ShoppingList } from "@/lib/types";
 
 export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner: boolean }) {
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
+  const requireOnline = useOnlineGuard();
   const [showInvite, setShowInvite] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [removed, setRemoved] = useState(false);
@@ -21,6 +23,7 @@ export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner
       `Delete "${list.name}"? This removes it for everyone and can't be undone.`,
     );
     if (!ok) return;
+    if (!(await requireOnline())) return;
     setDeleting(true);
     // Hide the row immediately rather than waiting on the network round
     // trip — router.refresh() would re-fetch the whole list from the

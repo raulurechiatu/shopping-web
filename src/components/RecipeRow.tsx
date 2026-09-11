@@ -7,11 +7,13 @@ import { createClient } from "@/lib/supabase/client";
 import ShareModal from "@/components/ShareModal";
 import { getTitleIcon } from "@/lib/itemIcons";
 import { useDialog } from "@/lib/DialogProvider";
+import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import type { Recipe } from "@/lib/types";
 
 export default function RecipeRow({ recipe, isShared }: { recipe: Recipe; isShared: boolean }) {
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
+  const requireOnline = useOnlineGuard();
   const [showShare, setShowShare] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [removed, setRemoved] = useState(false);
@@ -22,6 +24,7 @@ export default function RecipeRow({ recipe, isShared }: { recipe: Recipe; isShar
   async function handleDelete() {
     const ok = await confirmDialog(`Delete "${recipe.name}"? This can't be undone.`);
     if (!ok) return;
+    if (!(await requireOnline())) return;
     setDeleting(true);
     // Hide the row immediately rather than waiting on the network round
     // trip — router.refresh() would re-fetch the whole list from the

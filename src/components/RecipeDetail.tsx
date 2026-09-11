@@ -9,6 +9,7 @@ import { scaleQuantity } from "@/lib/quantityScale";
 import AddRecipeToListModal from "@/components/AddRecipeToListModal";
 import ShareModal from "@/components/ShareModal";
 import { useDialog } from "@/lib/DialogProvider";
+import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import type { Recipe, RecipeIngredient, ShoppingList } from "@/lib/types";
 
 const ACCENT_VAR = { food: "var(--accent-food)", cocktail: "var(--accent-cocktail)" } as const;
@@ -29,6 +30,7 @@ export default function RecipeDetail({
 }) {
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
+  const requireOnline = useOnlineGuard();
   const [showAddToList, setShowAddToList] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -54,6 +56,7 @@ export default function RecipeDetail({
   async function handleDelete() {
     const ok = await confirmDialog(`Delete "${recipe.name}"? This can't be undone.`);
     if (!ok) return;
+    if (!(await requireOnline())) return;
     setDeleting(true);
     const supabase = createClient();
     const { error } = await supabase.from("recipes").delete().eq("id", recipe.id);

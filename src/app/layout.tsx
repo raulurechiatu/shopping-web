@@ -3,6 +3,8 @@ import { Geist, Geist_Mono, Kalam, Patrick_Hand } from "next/font/google";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import { DialogProvider } from "@/lib/DialogProvider";
 import { ToastProvider } from "@/lib/ToastProvider";
+import OfflineBanner from "@/components/OfflineBanner";
+import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import "./globals.css";
 
 const THEME_INIT_SCRIPT = `
@@ -75,7 +77,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           <DialogProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <ToastProvider>
+              <OfflineBanner />
+              <ServiceWorkerRegistrar />
+              {children}
+            </ToastProvider>
           </DialogProvider>
         </ThemeProvider>
       </body>

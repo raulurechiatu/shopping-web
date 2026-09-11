@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import type { RecipeKind } from "@/lib/types";
 
 type IngredientDraft = { name: string; quantity: string };
@@ -31,6 +32,7 @@ export default function RecipeForm({
   initialIngredients?: IngredientDraft[];
 }) {
   const router = useRouter();
+  const requireOnline = useOnlineGuard();
   const accent = ACCENT[kind];
   const accentVar = kind === "cocktail" ? "var(--accent-cocktail)" : "var(--accent-food)";
   const noun = kind === "cocktail" ? "cocktail" : "recipe";
@@ -75,6 +77,7 @@ export default function RecipeForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    if (!(await requireOnline())) return;
 
     setSaving(true);
     setError(null);

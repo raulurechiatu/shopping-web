@@ -11,6 +11,7 @@ import ShareModal from "@/components/ShareModal";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import { useDialog } from "@/lib/DialogProvider";
 import { useToast } from "@/lib/ToastProvider";
+import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
 
 export default function ShoppingListView({
@@ -29,6 +30,7 @@ export default function ShoppingListView({
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
   const { showToast } = useToast();
+  const requireOnline = useOnlineGuard();
   const currentUserIdRef = useRef<string | null>(null);
   const memberNamesRef = useRef<Map<string, string>>(new Map());
   const selfDeletedIdsRef = useRef<Set<string>>(new Set());
@@ -54,6 +56,7 @@ export default function ShoppingListView({
       `Delete "${list.name}"? This removes it for everyone and can't be undone.`,
     );
     if (!ok) return;
+    if (!(await requireOnline())) return;
     setDeleting(true);
     const supabase = createClient();
     const { error } = await supabase.from("lists").delete().eq("id", list.id);
@@ -202,6 +205,7 @@ export default function ShoppingListView({
       setNewCategory("");
       return;
     }
+    if (!(await requireOnline())) return;
 
     const quantity = rawQuantity?.trim() || null;
     const category = rawCategory || getItemCategory(name);
@@ -276,6 +280,7 @@ export default function ShoppingListView({
   }
 
   async function toggleItem(item: ShoppingItem) {
+    if (!(await requireOnline())) return;
     const nextChecked = !item.is_checked;
     setItems((current) =>
       current.map((i) =>
@@ -301,6 +306,7 @@ export default function ShoppingListView({
   }
 
   async function deleteItem(item: ShoppingItem) {
+    if (!(await requireOnline())) return;
     selfDeletedIdsRef.current.add(item.id);
     setItems((current) => current.filter((i) => i.id !== item.id));
 
