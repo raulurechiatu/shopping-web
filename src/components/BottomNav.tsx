@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_TABS } from "@/components/navTabs";
+import { useCurrentUser } from "@/lib/useCurrentUser";
+import UserAvatar from "@/components/UserAvatar";
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const user = useCurrentUser();
 
   return (
     <nav
@@ -15,6 +18,7 @@ export default function BottomNav() {
       <div className="mx-auto flex max-w-2xl items-stretch justify-around">
         {NAV_TABS.map((tab) => {
           const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+          const isAccount = tab.href === "/account";
           return (
             <Link
               key={tab.href}
@@ -23,7 +27,11 @@ export default function BottomNav() {
                 active ? "text-[#2b3a55]" : "text-gray-400"
               }`}
             >
-              {tab.icon(active)}
+              {isAccount ? (
+                <UserAvatar user={user} size={24} className={active ? "ring-2 ring-[#2b3a55]" : ""} />
+              ) : (
+                tab.icon(active)
+              )}
               <span className={`text-[11px] ${active ? "font-medium" : ""}`}>{tab.label}</span>
             </Link>
           );

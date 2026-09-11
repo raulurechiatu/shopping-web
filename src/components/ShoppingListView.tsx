@@ -261,7 +261,10 @@ export default function ShoppingListView({
             </svg>
             Your Lists
           </Link>
-          <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">{list.name}</h1>
+          <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">
+            <span className="mr-1">🛒</span>
+            {list.name}
+          </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowInvite(true)}

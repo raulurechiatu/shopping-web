@@ -3,18 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_TABS } from "@/components/navTabs";
+import { useCurrentUser } from "@/lib/useCurrentUser";
+import UserAvatar from "@/components/UserAvatar";
 
 export default function TopBar() {
   const pathname = usePathname();
+  const user = useCurrentUser();
+  const primaryTabs = NAV_TABS.filter((tab) => tab.href !== "/account");
+  const accountActive = pathname === "/account" || pathname.startsWith("/account/");
 
   return (
     <header className="fixed inset-x-0 top-0 z-40 hidden border-b border-gray-200 bg-white sm:block">
-      <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
-        <Link href="/lists" className="font-script text-xl font-bold text-gray-900">
+      <div className="mx-auto grid max-w-4xl grid-cols-3 items-center px-6 py-3">
+        <Link href="/lists" className="font-script justify-self-start text-xl font-bold text-gray-900">
           Shopping List
         </Link>
-        <nav className="flex items-center gap-1">
-          {NAV_TABS.map((tab) => {
+
+        <nav className="flex items-center gap-1 justify-self-center">
+          {primaryTabs.map((tab) => {
             const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
             return (
               <Link
@@ -30,6 +36,16 @@ export default function TopBar() {
             );
           })}
         </nav>
+
+        <Link
+          href="/account"
+          className={`flex items-center gap-1.5 justify-self-end rounded-full px-2.5 py-1.5 text-sm font-medium ${
+            accountActive ? "bg-[#2b3a55] text-white" : "text-gray-500 hover:bg-gray-100"
+          }`}
+        >
+          <UserAvatar user={user} size={22} className={accountActive ? "ring-2 ring-white/50" : ""} />
+          Account
+        </Link>
       </div>
     </header>
   );

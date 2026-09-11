@@ -69,7 +69,7 @@ export default function RecipeDetail({
             {backLabel}
           </Link>
           <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">
-            {isCocktail && <span className="mr-1">🍸</span>}
+            <span className="mr-1">{isCocktail ? "🍸" : "🍽️"}</span>
             {recipe.name}
           </h1>
           {!isOwner && <p className="mt-1 text-xs text-gray-400">Shared with you — view only</p>}

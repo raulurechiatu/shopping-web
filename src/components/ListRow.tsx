@@ -30,7 +30,10 @@ export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner
   return (
     <li className="flex items-center gap-2 rounded-xl bg-white px-4 py-3.5 shadow-sm">
       <Link href={`/lists/${list.id}`} className="min-w-0 flex-1">
-        <span className="font-hand block truncate text-lg text-gray-900">{list.name}</span>
+        <span className="font-hand block truncate text-lg text-gray-900">
+          <span className="mr-1">🛒</span>
+          {list.name}
+        </span>
       </Link>
       <button
         onClick={() => setShowInvite(true)}

@@ -31,7 +31,7 @@ export default function RecipeRow({ recipe, isShared }: { recipe: Recipe; isShar
     <li className="flex items-center gap-2 rounded-xl bg-white px-4 py-3.5 shadow-sm">
       <Link href={`/recipes/${recipe.id}`} className="min-w-0 flex-1">
         <span className="font-hand block truncate text-lg text-gray-900">
-          {isCocktail && <span className="mr-1">🍸</span>}
+          <span className="mr-1">{isCocktail ? "🍸" : "🍽️"}</span>
           {recipe.name}
         </span>
       </Link>
