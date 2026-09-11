@@ -54,7 +54,7 @@ const CATEGORY_RULES: Array<[RegExp, CategoryId]> = [
   ],
   // Meat & Seafood
   [
-    /\b(chicken|poultry|turkey|pui|curcan|duck|rata|beef|steak|meat|carne|vita|pork|porc|lamb|miel|liver|ficat|veal|vitel|rabbit|iepure|goose|gasca|meatball|meatballs|chiftea|chiftele|bacon|ham|sausage|salami|prosciutto|sunca|carnati|carnat|fish|salmon|tuna|cod|peste|somon|shrimp|prawn|prawns|creveti|creveta|crab|lobster|homar|squid|octopus|calamar|caracatita|mussels|oysters|midii|stridii|anchov(y|ies)|sardine|caviar)\b/,
+    /\b(chicken|poultry|turkey|pui|curcan|duck|rata|beef|steak|meat|carne|vita|pork|porc|lamb|miel|liver|ficat|veal|vitel|rabbit|iepure|goose|gasca|meatball|meatballs|chiftea|chiftele|bacon|ham|sausage|salami|prosciutto|sunca|carnati|carnat|salam|muschi|muschiulet|pastrama|slanina|jambon|cabanos|parizer|toba|caltabos|afumatura|afumaturi|cotlet|antricot|ceafa|gizzard|gizzards|pipote|chicken wings|aripioare|shank|rasol|giblets|maruntaie|fish|salmon|tuna|cod|peste|somon|shrimp|prawn|prawns|creveti|creveta|crab|lobster|homar|squid|octopus|calamar|caracatita|mussels|oysters|midii|stridii|anchov(y|ies)|sardine|caviar)\b/,
     "meat",
   ],
   // Bakery
@@ -73,7 +73,7 @@ const CATEGORY_RULES: Array<[RegExp, CategoryId]> = [
   ],
   // Pantry
   [
-    /\b(rice|orez|quinoa|couscous|pasta|spaghetti|noodles|macaroni|paste|pizza|cereal|oats|oatmeal|granola|muesli|cereale|ovaz|flour|faina|breadcrumbs|pesmet|yeast|drojdie|baking powder|praf de copt|barley|orz|buckwheat|hrisca|bulgur|cornstarch|amidon|cocoa powder|pudra de cacao|chocolate chips|fulgi de ciocolata|powdered sugar|zahar pudra|curry|sugar|zahar|salt|sare|spice|spices|condimente|condiment|cinnamon|scortisoara|vanilla|vanilie|honey|miere|jam|marmalade|preserve|gem|dulceata|oil|olive oil|ulei|vinegar|otet|soy sauce|sos de soia|sauce|ketchup|mustard|mayo|mayonnaise|sos|mustar|soup|supa|ciorba|nuts|almond|almonds|walnut|peanut|cashew|nuci|alune|migdale|sesame|susan|seaweed|nori|alge marine)\b/,
+    /\b(rice|orez|quinoa|couscous|pasta|spaghetti|noodles|macaroni|paste|pizza|cereal|oats|oatmeal|granola|muesli|cereale|ovaz|flour|faina|breadcrumbs|pesmet|yeast|drojdie|baking powder|praf de copt|barley|orz|buckwheat|hrisca|bulgur|cornstarch|amidon|cocoa powder|pudra de cacao|chocolate chips|fulgi de ciocolata|powdered sugar|zahar pudra|curry|sugar|zahar|salt|sare|spice|spices|condimente|condiment|cinnamon|scortisoara|vanilla|vanilie|honey|miere|jam|marmalade|preserve|gem|dulceata|oil|olive oil|ulei|vinegar|otet|soy sauce|sos de soia|sauce|ketchup|mustard|mayo|mayonnaise|sos|mustar|soup|supa|ciorba|nuts|almond|almonds|walnut|peanut|cashew|nuci|alune|migdale|sesame|susan|seaweed|nori|alge marine|tomato paste|bulion|pasta de tomate|pasta de rosii|canned|can|tin|conserva|conserve|peanut butter|unt de arahide|stock|broth|zeama|zeama de oase)\b/,
     "pantry",
   ],
   // Personal Care

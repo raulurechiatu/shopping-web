@@ -12,7 +12,7 @@ import { useDialog } from "@/lib/DialogProvider";
 import type { Recipe, RecipeIngredient, ShoppingList } from "@/lib/types";
 
 const ACCENT_VAR = { food: "var(--accent-food)", cocktail: "var(--accent-cocktail)" } as const;
-const SCALE_OPTIONS = [0.5, 1, 2, 3];
+const SCALE_OPTIONS = [0.5, 1, 2, 4];
 
 export default function RecipeDetail({
   recipe,

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
-import { CATEGORY_ORDER, getItemCategory, type CategoryId } from "@/lib/itemCategories";
+import { CATEGORY_ORDER, CATEGORY_LABELS, getItemCategory, type CategoryId } from "@/lib/itemCategories";
 import { lookupBarcode } from "@/lib/barcodeLookup";
 import ShareModal from "@/components/ShareModal";
 import BarcodeScanner from "@/components/BarcodeScanner";
@@ -35,6 +35,7 @@ export default function ShoppingListView({
   const [showInvite, setShowInvite] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "looking-up">("idle");
+  const [itemQuery, setItemQuery] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -258,17 +259,31 @@ export default function ShoppingListView({
     }
   }
 
+  function itemCategoryOf(item: ShoppingItem): CategoryId {
+    return (item.category as CategoryId | null) || getItemCategory(item.name);
+  }
+
+  const trimmedItemQuery = itemQuery.trim().toLowerCase();
+  function matchesItemQuery(item: ShoppingItem) {
+    if (!trimmedItemQuery) return true;
+    return (
+      item.name.toLowerCase().includes(trimmedItemQuery) ||
+      (item.quantity ?? "").toLowerCase().includes(trimmedItemQuery) ||
+      CATEGORY_LABELS[itemCategoryOf(item)].toLowerCase().includes(trimmedItemQuery)
+    );
+  }
+
   const pending = items
-    .filter((i) => !i.is_checked)
+    .filter((i) => !i.is_checked && matchesItemQuery(i))
     .sort((a, b) => a.created_at.localeCompare(b.created_at));
   const checked = items
-    .filter((i) => i.is_checked)
+    .filter((i) => i.is_checked && matchesItemQuery(i))
     .sort((a, b) => (b.checked_at ?? "").localeCompare(a.checked_at ?? ""));
 
   const pendingByCategory = (() => {
     const groups = new Map<CategoryId, ShoppingItem[]>();
     for (const item of pending) {
-      const cat = (item.category as CategoryId | null) || getItemCategory(item.name);
+      const cat = itemCategoryOf(item);
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat)!.push(item);
     }
@@ -316,6 +331,14 @@ export default function ShoppingListView({
               </svg>
               Invite people · {list.invite_code}
             </button>
+            <button
+              type="button"
+              onClick={() => setShowScanner(true)}
+              disabled={scanStatus === "looking-up"}
+              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100 disabled:opacity-50"
+            >
+              {scanStatus === "looking-up" ? "…" : "📷"} Scan barcode
+            </button>
             {isOwner && (
               <button
                 onClick={handleDeleteList}
@@ -344,15 +367,6 @@ export default function ShoppingListView({
               placeholder="qty"
               className="font-hand w-16 shrink-0 border-b-2 border-gray-300 dark:border-gray-700 bg-transparent px-1 py-2 text-lg text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-[var(--accent-food)] focus:outline-none"
             />
-            <button
-              type="button"
-              onClick={() => setShowScanner(true)}
-              disabled={scanStatus === "looking-up"}
-              aria-label="Scan a barcode"
-              className="shrink-0 touch-manipulation rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2.5 text-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
-            >
-              {scanStatus === "looking-up" ? "…" : "📷"}
-            </button>
             <button
               type="submit"
               disabled={isAdding || !newItem.trim()}
@@ -387,6 +401,13 @@ export default function ShoppingListView({
               );
             })()}
 
+          <input
+            value={itemQuery}
+            onChange={(e) => setItemQuery(e.target.value)}
+            placeholder="🔍 Search items, quantities, categories..."
+            className="font-hand mb-4 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent-food)] focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
+          />
+
           {suggestions.length > 0 && (
             <div className="mb-6">
               {!newItem.trim() && (
@@ -409,9 +430,15 @@ export default function ShoppingListView({
             </div>
           )}
 
-          {pending.length === 0 && checked.length === 0 && (
+          {items.length === 0 && (
             <p className="font-hand py-12 text-center text-lg text-gray-400 dark:text-gray-500">
               The list is empty. Write something above to get started.
+            </p>
+          )}
+
+          {items.length > 0 && pending.length === 0 && checked.length === 0 && trimmedItemQuery && (
+            <p className="font-hand py-12 text-center text-lg text-gray-400 dark:text-gray-500">
+              No items match &ldquo;{itemQuery}&rdquo;.
             </p>
           )}
 
