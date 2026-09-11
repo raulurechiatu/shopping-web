@@ -48,6 +48,7 @@ export default function ShoppingListView({
   const [showScanner, setShowScanner] = useState(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "looking-up">("idle");
   const [viewerNames, setViewerNames] = useState<string[]>([]);
+  const [favoritesExpanded, setFavoritesExpanded] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -222,14 +223,17 @@ export default function ShoppingListView({
     [items],
   );
 
+  // "Quick add" is just your most recently used items — no scrollbar, no
+  // favoriting from here; it's a short, fixed-size strip so it never eats
+  // much vertical space.
   const suggestions = useMemo(() => {
     const query = newItem.trim().toLowerCase();
     return [...catalog]
       .filter((c) => !c.is_favorite)
       .filter((c) => !pendingNames.has(c.name.toLowerCase()))
       .filter((c) => (query ? c.name.toLowerCase().includes(query) : true))
-      .sort((a, b) => b.use_count - a.use_count || b.last_used_at.localeCompare(a.last_used_at))
-      .slice(0, query ? 6 : 12);
+      .sort((a, b) => b.last_used_at.localeCompare(a.last_used_at))
+      .slice(0, query ? 6 : 8);
   }, [catalog, pendingNames, newItem]);
 
   // Favorites always show (not just when recently used) so "usual buys"
@@ -240,6 +244,15 @@ export default function ShoppingListView({
       .filter((c) => !pendingNames.has(c.name.toLowerCase()))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [catalog, pendingNames]);
+
+  // Lets item chips in the actual list (not just catalog suggestions) show
+  // and toggle favorite status — marking a favorite from a real item you're
+  // shopping for reads more naturally than starring a suggestion chip.
+  const catalogByName = useMemo(() => {
+    const map = new Map<string, CatalogItem>();
+    for (const c of catalog) map.set(c.name.toLowerCase(), c);
+    return map;
+  }, [catalog]);
 
   async function toggleFavorite(catalogItem: CatalogItem) {
     const nextFavorite = !catalogItem.is_favorite;
@@ -579,16 +592,32 @@ export default function ShoppingListView({
                 <p className="text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
                   ⭐ Favorites
                 </p>
-                {favorites.length > 1 && (
-                  <button
-                    onClick={addAllFavorites}
-                    className="font-hand touch-manipulation text-xs font-medium text-[var(--accent-food)] hover:underline"
-                  >
-                    + Add all
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  {favorites.length > 1 && (
+                    <button
+                      onClick={addAllFavorites}
+                      className="font-hand touch-manipulation text-xs font-medium text-[var(--accent-food)] hover:underline"
+                    >
+                      + Add all
+                    </button>
+                  )}
+                  {favorites.length > 4 && (
+                    <button
+                      onClick={() => setFavoritesExpanded((v) => !v)}
+                      className="font-hand touch-manipulation text-xs font-medium text-gray-500 dark:text-gray-400 hover:underline"
+                    >
+                      {favoritesExpanded ? "Show less" : `Show all (${favorites.length})`}
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
+              <div
+                className={
+                  favoritesExpanded
+                    ? "flex flex-wrap gap-2"
+                    : "flex flex-nowrap gap-2 overflow-x-auto pb-1"
+                }
+              >
                 {favorites.map((c) => (
                   <CatalogChip
                     key={c.id}
@@ -608,13 +637,12 @@ export default function ShoppingListView({
                   Quick add
                 </p>
               )}
-              <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
+              <div className="flex flex-wrap gap-2">
                 {suggestions.map((c) => (
                   <CatalogChip
                     key={c.id}
                     item={c}
                     onAdd={() => addItemByName(c.name, undefined, c.category as CategoryId | null)}
-                    onToggleFavorite={() => toggleFavorite(c)}
                   />
                 ))}
               </div>
@@ -643,6 +671,8 @@ export default function ShoppingListView({
                       onToggle={toggleItem}
                       onDelete={deleteItem}
                       isMatch={item.id === existingPendingMatch?.id}
+                      catalogItem={catalogByName.get(item.name.toLowerCase())}
+                      onToggleFavorite={toggleFavorite}
                     />
                   ))}
                 </ul>
@@ -657,7 +687,14 @@ export default function ShoppingListView({
               </p>
               <ul className="flex flex-wrap gap-2">
                 {checked.map((item) => (
-                  <ItemChip key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+                  <ItemChip
+                    key={item.id}
+                    item={item}
+                    onToggle={toggleItem}
+                    onDelete={deleteItem}
+                    catalogItem={catalogByName.get(item.name.toLowerCase())}
+                    onToggleFavorite={toggleFavorite}
+                  />
                 ))}
               </ul>
             </div>
@@ -687,11 +724,15 @@ function ItemChip({
   onToggle,
   onDelete,
   isMatch,
+  catalogItem,
+  onToggleFavorite,
 }: {
   item: ShoppingItem;
   onToggle: (item: ShoppingItem) => void;
   onDelete: (item: ShoppingItem) => void;
   isMatch?: boolean;
+  catalogItem?: CatalogItem;
+  onToggleFavorite?: (catalogItem: CatalogItem) => void;
 }) {
   return (
     <li
@@ -737,6 +778,17 @@ function ItemChip({
           {item.quantity && <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">×{item.quantity}</span>}
         </span>
       </button>
+      {catalogItem && onToggleFavorite && (
+        <button
+          onClick={() => onToggleFavorite(catalogItem)}
+          aria-label={catalogItem.is_favorite ? "Remove from favorites" : "Mark as favorite"}
+          className={`shrink-0 touch-manipulation rounded-full py-1.5 pl-1 text-sm ${
+            catalogItem.is_favorite ? "text-amber-500" : "text-gray-300 dark:text-gray-600 hover:text-amber-500"
+          }`}
+        >
+          {catalogItem.is_favorite ? "★" : "☆"}
+        </button>
+      )}
       <button
         onClick={() => onDelete(item)}
         className="shrink-0 touch-manipulation rounded-full p-1.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-500"
@@ -755,29 +807,33 @@ function CatalogChip({
 }: {
   item: CatalogItem;
   onAdd: () => void;
-  onToggleFavorite: () => void;
+  onToggleFavorite?: () => void;
 }) {
   return (
     <div className="flex shrink-0 items-center rounded-full border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-500">
       <button
         onClick={onAdd}
-        className="font-hand flex touch-manipulation items-center gap-1.5 py-1.5 pr-1 pl-3 text-base text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+        className={`font-hand flex touch-manipulation items-center gap-1.5 py-1.5 text-base text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 ${
+          onToggleFavorite ? "pr-1 pl-3" : "px-3"
+        }`}
       >
         <span>{getItemIcon(item.name)}</span>
         {item.name}
       </button>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleFavorite();
-        }}
-        aria-label={item.is_favorite ? "Remove from favorites" : "Add to favorites"}
-        className={`shrink-0 touch-manipulation rounded-full py-1.5 pr-2.5 pl-1 text-sm ${
-          item.is_favorite ? "text-amber-500" : "text-gray-300 dark:text-gray-600 hover:text-amber-500"
-        }`}
-      >
-        {item.is_favorite ? "★" : "☆"}
-      </button>
+      {onToggleFavorite && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          aria-label={item.is_favorite ? "Remove from favorites" : "Add to favorites"}
+          className={`shrink-0 touch-manipulation rounded-full py-1.5 pr-2.5 pl-1 text-sm ${
+            item.is_favorite ? "text-amber-500" : "text-gray-300 dark:text-gray-600 hover:text-amber-500"
+          }`}
+        >
+          {item.is_favorite ? "★" : "☆"}
+        </button>
+      )}
     </div>
   );
 }
