@@ -11,6 +11,7 @@ import {
 } from "@/lib/recipeDiscovery";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import { useDialog } from "@/lib/DialogProvider";
+import RecipePreviewModal from "@/components/RecipePreviewModal";
 import type { RecipeKind } from "@/lib/types";
 
 const MIN_QUERY_LENGTH = 2;
@@ -25,6 +26,7 @@ export default function DiscoverRecipes({ kind }: { kind: RecipeKind }) {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState<DiscoveredRecipe | null>(null);
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -98,18 +100,24 @@ export default function DiscoverRecipes({ kind }: { kind: RecipeKind }) {
               key={r.externalId}
               className="flex items-center gap-3 rounded-xl bg-white p-2.5 shadow-sm dark:bg-gray-900"
             >
-              {r.thumbnail && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={r.thumbnail}
-                  alt=""
-                  className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                  loading="lazy"
-                />
-              )}
-              <span className="font-hand min-w-0 flex-1 truncate text-base text-gray-900 dark:text-gray-100">
-                {r.name}
-              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewing(r)}
+                className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 text-left"
+              >
+                {r.thumbnail && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={r.thumbnail}
+                    alt=""
+                    className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                    loading="lazy"
+                  />
+                )}
+                <span className="font-hand min-w-0 flex-1 truncate text-base text-gray-900 dark:text-gray-100">
+                  {r.name}
+                </span>
+              </button>
               <button
                 onClick={() => handleImport(r)}
                 disabled={importingId === r.externalId}
@@ -126,6 +134,16 @@ export default function DiscoverRecipes({ kind }: { kind: RecipeKind }) {
         <p className="font-hand text-center text-gray-400 dark:text-gray-500">
           No {kind === "cocktail" ? "cocktails" : "recipes"} found for &ldquo;{query.trim()}&rdquo;.
         </p>
+      )}
+
+      {previewing && (
+        <RecipePreviewModal
+          recipe={previewing}
+          kind={kind}
+          adding={importingId === previewing.externalId}
+          onAdd={() => handleImport(previewing)}
+          onClose={() => setPreviewing(null)}
+        />
       )}
     </div>
   );

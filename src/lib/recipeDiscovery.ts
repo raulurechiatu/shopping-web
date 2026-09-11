@@ -146,11 +146,21 @@ export async function lookupCocktailRecipe(id: string): Promise<DiscoveredRecipe
   }
 }
 
-export type PantryMatch = { recipe: RecipeStub; matchedIngredients: string[] };
+// The full recipe is included (not just the stub) so a match can be
+// previewed without a second fetch, and so "missing" can be computed
+// against the actual ingredient list rather than just the search terms
+// that happened to surface the recipe.
+export type PantryMatch = {
+  recipe: DiscoveredRecipe;
+  haveIngredients: string[];
+  missingIngredients: string[];
+};
 
 // "What can I make?" — matches recipes against a pantry list (whatever's
 // currently on the user's shopping lists), one ingredient-filter call per
-// pantry item, ranked by how many of those items each recipe uses.
+// pantry item. Candidates are then fetched in full and ranked by fewest
+// missing ingredients first, so a recipe you're mostly stocked for still
+// surfaces even if it needs one or two things you don't have.
 export async function findRecipesFromIngredients(
   pantryItems: string[],
   kind: RecipeKind,
@@ -159,22 +169,50 @@ export async function findRecipesFromIngredients(
     new Set(pantryItems.map((i) => i.trim().toLowerCase()).filter(Boolean)),
   ).slice(0, 15);
   const searchFn = kind === "cocktail" ? searchCocktailsByIngredient : searchMealsByIngredient;
+  const lookupFn = kind === "cocktail" ? lookupCocktailRecipe : lookupMealRecipe;
 
   const results = await Promise.all(
     uniqueItems.map(async (ingredient) => ({ ingredient, stubs: await searchFn(ingredient) })),
   );
 
-  const byId = new Map<string, PantryMatch>();
-  for (const { ingredient, stubs } of results) {
+  const byId = new Map<string, { stub: RecipeStub; matchedCount: number }>();
+  for (const { stubs } of results) {
     for (const stub of stubs) {
       const existing = byId.get(stub.externalId);
-      if (existing) existing.matchedIngredients.push(ingredient);
-      else byId.set(stub.externalId, { recipe: stub, matchedIngredients: [ingredient] });
+      if (existing) existing.matchedCount += 1;
+      else byId.set(stub.externalId, { stub, matchedCount: 1 });
     }
   }
 
-  return Array.from(byId.values())
-    .sort((a, b) => b.matchedIngredients.length - a.matchedIngredients.length)
+  // Fetching full details is a second call per candidate, so bound the
+  // pool (by raw match count) before paying for it.
+  const candidates = Array.from(byId.values())
+    .sort((a, b) => b.matchedCount - a.matchedCount)
+    .slice(0, 20);
+
+  const withDetails = await Promise.all(
+    candidates.map(async ({ stub }): Promise<PantryMatch | null> => {
+      const full = await lookupFn(stub.externalId);
+      if (!full) return null;
+      const have: string[] = [];
+      const missing: string[] = [];
+      for (const ing of full.ingredients) {
+        const name = ing.name.trim().toLowerCase();
+        if (!name) continue;
+        const inPantry = uniqueItems.some((p) => name.includes(p) || p.includes(name));
+        (inPantry ? have : missing).push(ing.name);
+      }
+      return { recipe: full, haveIngredients: have, missingIngredients: missing };
+    }),
+  );
+
+  return withDetails
+    .filter((m): m is PantryMatch => m !== null && m.haveIngredients.length > 0)
+    .sort(
+      (a, b) =>
+        a.missingIngredients.length - b.missingIngredients.length ||
+        b.haveIngredients.length - a.haveIngredients.length,
+    )
     .slice(0, 12);
 }
 

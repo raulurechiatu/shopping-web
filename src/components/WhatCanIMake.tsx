@@ -3,15 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import {
-  findRecipesFromIngredients,
-  lookupMealRecipe,
-  lookupCocktailRecipe,
-  importDiscoveredRecipe,
-  type PantryMatch,
-} from "@/lib/recipeDiscovery";
+import { findRecipesFromIngredients, importDiscoveredRecipe, type PantryMatch } from "@/lib/recipeDiscovery";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import { useDialog } from "@/lib/DialogProvider";
+import RecipePreviewModal from "@/components/RecipePreviewModal";
 import type { RecipeKind } from "@/lib/types";
 
 export default function WhatCanIMake({ kind, pantryItems }: { kind: RecipeKind; pantryItems: string[] }) {
@@ -23,6 +18,7 @@ export default function WhatCanIMake({ kind, pantryItems }: { kind: RecipeKind; 
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState<PantryMatch | null>(null);
   const noun = kind === "cocktail" ? "cocktails" : "recipes";
 
   if (pantryItems.length === 0) return null;
@@ -41,23 +37,12 @@ export default function WhatCanIMake({ kind, pantryItems }: { kind: RecipeKind; 
     if (!(await requireOnline())) return;
     setImportingId(match.recipe.externalId);
 
-    const full =
-      kind === "cocktail"
-        ? await lookupCocktailRecipe(match.recipe.externalId)
-        : await lookupMealRecipe(match.recipe.externalId);
-
-    if (!full) {
-      await alertDialog(`Couldn't load this ${kind === "cocktail" ? "cocktail" : "recipe"}.`);
-      setImportingId(null);
-      return;
-    }
-
     const supabase = createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const result = await importDiscoveredRecipe(supabase, full, kind, user?.id);
+    const result = await importDiscoveredRecipe(supabase, match.recipe, kind, user?.id);
 
     if ("error" in result) {
       await alertDialog(result.error);
@@ -94,23 +79,31 @@ export default function WhatCanIMake({ kind, pantryItems }: { kind: RecipeKind; 
                   key={match.recipe.externalId}
                   className="flex items-center gap-3 rounded-xl bg-white p-2.5 shadow-sm dark:bg-gray-900"
                 >
-                  {match.recipe.thumbnail && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={match.recipe.thumbnail}
-                      alt=""
-                      className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                      loading="lazy"
-                    />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <span className="font-hand block truncate text-base text-gray-900 dark:text-gray-100">
-                      {match.recipe.name}
-                    </span>
-                    <span className="block truncate text-xs text-gray-400 dark:text-gray-500">
-                      Uses {match.matchedIngredients.length}: {match.matchedIngredients.join(", ")}
-                    </span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewing(match)}
+                    className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 text-left"
+                  >
+                    {match.recipe.thumbnail && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={match.recipe.thumbnail}
+                        alt=""
+                        className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                        loading="lazy"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <span className="font-hand block truncate text-base text-gray-900 dark:text-gray-100">
+                        {match.recipe.name}
+                      </span>
+                      <span className="block truncate text-xs text-gray-400 dark:text-gray-500">
+                        {match.missingIngredients.length === 0
+                          ? `Have all ${match.haveIngredients.length} ingredients`
+                          : `Missing ${match.missingIngredients.length}: ${match.missingIngredients.join(", ")}`}
+                      </span>
+                    </div>
+                  </button>
                   <button
                     onClick={() => handleImport(match)}
                     disabled={importingId === match.recipe.externalId}
@@ -129,6 +122,16 @@ export default function WhatCanIMake({ kind, pantryItems }: { kind: RecipeKind; 
             </p>
           )}
         </>
+      )}
+
+      {previewing && (
+        <RecipePreviewModal
+          recipe={previewing.recipe}
+          kind={kind}
+          adding={importingId === previewing.recipe.externalId}
+          onAdd={() => handleImport(previewing)}
+          onClose={() => setPreviewing(null)}
+        />
       )}
     </div>
   );
