@@ -13,7 +13,6 @@ import BarcodeScanner from "@/components/BarcodeScanner";
 import { useDialog } from "@/lib/DialogProvider";
 import { useToast } from "@/lib/ToastProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
-import { useCurrentUser } from "@/lib/useCurrentUser";
 import type { ShoppingItem, ShoppingList, UserItem } from "@/lib/types";
 
 export default function ShoppingListView({
@@ -33,7 +32,6 @@ export default function ShoppingListView({
   const { confirmDialog, alertDialog } = useDialog();
   const { showToast } = useToast();
   const requireOnline = useOnlineGuard();
-  const currentUser = useCurrentUser();
   const currentUserIdRef = useRef<string | null>(null);
   const memberNamesRef = useRef<Map<string, string>>(new Map());
   const selfDeletedIdsRef = useRef<Set<string>>(new Set());
@@ -439,14 +437,6 @@ export default function ShoppingListView({
               >
                 ⭐ Favorites ({favorites.length})
               </button>
-            )}
-            {!currentUser?.isAnonymous && (
-              <Link
-                href="/items"
-                className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
-              >
-                📋 Manage items
-              </Link>
             )}
             <button
               onClick={() => setShowInvite(true)}
