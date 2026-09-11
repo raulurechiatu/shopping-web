@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
 import ShareModal from "@/components/ShareModal";
+import { useDialog } from "@/lib/DialogProvider";
 import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
 
 export default function ShoppingListView({
@@ -20,6 +21,7 @@ export default function ShoppingListView({
   isOwner: boolean;
 }) {
   const router = useRouter();
+  const { confirmDialog, alertDialog } = useDialog();
   const [items, setItems] = useState<ShoppingItem[]>(initialItems);
   const [catalog, setCatalog] = useState<CatalogItem[]>(initialCatalog);
   const [newItem, setNewItem] = useState("");
@@ -30,14 +32,15 @@ export default function ShoppingListView({
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleDeleteList() {
-    if (!confirm(`Delete "${list.name}"? This removes it for everyone and can't be undone.`)) {
-      return;
-    }
+    const ok = await confirmDialog(
+      `Delete "${list.name}"? This removes it for everyone and can't be undone.`,
+    );
+    if (!ok) return;
     setDeleting(true);
     const supabase = createClient();
     const { error } = await supabase.from("lists").delete().eq("id", list.id);
     if (error) {
-      alert(error.message);
+      await alertDialog(error.message);
       setDeleting(false);
       return;
     }

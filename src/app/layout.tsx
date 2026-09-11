@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Kalam, Patrick_Hand } from "next/font/google";
 import { ThemeProvider } from "@/lib/ThemeProvider";
+import { DialogProvider } from "@/lib/DialogProvider";
 import "./globals.css";
 
 const THEME_INIT_SCRIPT = `
@@ -71,7 +72,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <DialogProvider>{children}</DialogProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getItemIcon, getTitleIcon } from "@/lib/itemIcons";
 import AddRecipeToListModal from "@/components/AddRecipeToListModal";
 import ShareModal from "@/components/ShareModal";
+import { useDialog } from "@/lib/DialogProvider";
 import type { Recipe, RecipeIngredient, ShoppingList } from "@/lib/types";
 
 const ACCENT_VAR = { food: "var(--accent-food)", cocktail: "var(--accent-cocktail)" } as const;
@@ -23,6 +24,7 @@ export default function RecipeDetail({
   isOwner: boolean;
 }) {
   const router = useRouter();
+  const { confirmDialog, alertDialog } = useDialog();
   const [showAddToList, setShowAddToList] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -40,12 +42,13 @@ export default function RecipeDetail({
     .filter(Boolean);
 
   async function handleDelete() {
-    if (!confirm(`Delete "${recipe.name}"? This can't be undone.`)) return;
+    const ok = await confirmDialog(`Delete "${recipe.name}"? This can't be undone.`);
+    if (!ok) return;
     setDeleting(true);
     const supabase = createClient();
     const { error } = await supabase.from("recipes").delete().eq("id", recipe.id);
     if (error) {
-      alert(error.message);
+      await alertDialog(error.message);
       setDeleting(false);
       return;
     }

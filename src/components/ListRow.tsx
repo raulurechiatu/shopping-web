@@ -6,18 +6,21 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ShareModal from "@/components/ShareModal";
 import { getItemIcon } from "@/lib/itemIcons";
+import { useDialog } from "@/lib/DialogProvider";
 import type { ShoppingList } from "@/lib/types";
 
 export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner: boolean }) {
   const router = useRouter();
+  const { confirmDialog, alertDialog } = useDialog();
   const [showInvite, setShowInvite] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [removed, setRemoved] = useState(false);
 
   async function handleDelete() {
-    if (!confirm(`Delete "${list.name}"? This removes it for everyone and can't be undone.`)) {
-      return;
-    }
+    const ok = await confirmDialog(
+      `Delete "${list.name}"? This removes it for everyone and can't be undone.`,
+    );
+    if (!ok) return;
     setDeleting(true);
     // Hide the row immediately rather than waiting on the network round
     // trip — router.refresh() would re-fetch the whole list from the
@@ -26,7 +29,7 @@ export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner
     const supabase = createClient();
     const { error } = await supabase.from("lists").delete().eq("id", list.id);
     if (error) {
-      alert(error.message);
+      await alertDialog(error.message);
       setRemoved(false);
       setDeleting(false);
       return;
