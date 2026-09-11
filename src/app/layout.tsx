@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Kalam, Patrick_Hand } from "next/font/google";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import { DialogProvider } from "@/lib/DialogProvider";
+import { ToastProvider } from "@/lib/ToastProvider";
 import "./globals.css";
 
 const THEME_INIT_SCRIPT = `
@@ -73,7 +74,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
-          <DialogProvider>{children}</DialogProvider>
+          <DialogProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </DialogProvider>
         </ThemeProvider>
       </body>
     </html>

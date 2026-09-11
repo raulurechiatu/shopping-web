@@ -10,6 +10,7 @@ import { lookupBarcode } from "@/lib/barcodeLookup";
 import ShareModal from "@/components/ShareModal";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import { useDialog } from "@/lib/DialogProvider";
+import { useToast } from "@/lib/ToastProvider";
 import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
 
 export default function ShoppingListView({
@@ -27,7 +28,15 @@ export default function ShoppingListView({
 }) {
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
+  const { showToast } = useToast();
+  const currentUserIdRef = useRef<string | null>(null);
+  const memberNamesRef = useRef<Map<string, string>>(new Map());
+  const selfDeletedIdsRef = useRef<Set<string>>(new Set());
   const [items, setItems] = useState<ShoppingItem[]>(initialItems);
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
   const [catalog, setCatalog] = useState<CatalogItem[]>(initialCatalog);
   const [newItem, setNewItem] = useState("");
   const [newQuantity, setNewQuantity] = useState("");
@@ -62,11 +71,33 @@ export default function ShoppingListView({
     let catalogChannel: ReturnType<typeof supabase.channel> | undefined;
     let cancelled = false;
 
+    // Who's on this list, so toasts can name whoever added something
+    // instead of staying generic.
+    supabase
+      .from("list_members")
+      .select("user_id")
+      .eq("list_id", list.id)
+      .then(({ data: members }) => {
+        const ids = (members ?? []).map((m) => m.user_id);
+        if (cancelled || ids.length === 0) return;
+        supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", ids)
+          .then(({ data: profiles }) => {
+            if (cancelled) return;
+            for (const p of profiles ?? []) {
+              if (p.full_name) memberNamesRef.current.set(p.id, p.full_name);
+            }
+          });
+      });
+
     // The realtime client only authenticates once the session has been
     // loaded from cookies. Subscribing before that leaves the socket
     // anonymous, and RLS then hides every row. Wait for the session first.
-    supabase.auth.getSession().then(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return;
+      currentUserIdRef.current = session?.user?.id ?? null;
 
       itemsChannel = supabase
         .channel(`list_items:${list.id}`)
@@ -74,6 +105,27 @@ export default function ShoppingListView({
           "postgres_changes",
           { event: "*", schema: "public", table: "list_items", filter: `list_id=eq.${list.id}` },
           (payload) => {
+            if (payload.eventType === "INSERT") {
+              const incoming = payload.new as ShoppingItem;
+              if (incoming.added_by && incoming.added_by !== currentUserIdRef.current) {
+                const name = memberNamesRef.current.get(incoming.added_by) ?? "Someone";
+                showToast(`${name} added ${incoming.name}`, "🧺");
+              }
+            }
+            if (payload.eventType === "DELETE") {
+              // payload.old is sometimes reduced to just the primary key
+              // regardless of replica identity (Realtime-side behavior we
+              // don't control), so look the name up in what we already have
+              // loaded (via a ref — this runs outside any state updater, so
+              // it must not read `items` directly) rather than the payload.
+              const removedId = (payload.old as { id: string }).id;
+              if (selfDeletedIdsRef.current.has(removedId)) {
+                selfDeletedIdsRef.current.delete(removedId);
+              } else {
+                const removedItem = itemsRef.current.find((i) => i.id === removedId);
+                showToast(`${removedItem?.name ?? "An item"} was removed`, "🗑️");
+              }
+            }
             setItems((current) => {
               if (payload.eventType === "INSERT") {
                 const incoming = payload.new as ShoppingItem;
@@ -85,8 +137,8 @@ export default function ShoppingListView({
                 return current.map((i) => (i.id === updated.id ? updated : i));
               }
               if (payload.eventType === "DELETE") {
-                const removed = payload.old as ShoppingItem;
-                return current.filter((i) => i.id !== removed.id);
+                const removedId = (payload.old as { id: string }).id;
+                return current.filter((i) => i.id !== removedId);
               }
               return current;
             });
@@ -249,12 +301,14 @@ export default function ShoppingListView({
   }
 
   async function deleteItem(item: ShoppingItem) {
+    selfDeletedIdsRef.current.add(item.id);
     setItems((current) => current.filter((i) => i.id !== item.id));
 
     const supabase = createClient();
     const { error } = await supabase.from("list_items").delete().eq("id", item.id);
 
     if (error) {
+      selfDeletedIdsRef.current.delete(item.id);
       setItems((current) => (current.some((i) => i.id === item.id) ? current : [...current, item]));
     }
   }
