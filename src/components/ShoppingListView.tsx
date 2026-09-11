@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -13,18 +13,16 @@ import BarcodeScanner from "@/components/BarcodeScanner";
 import { useDialog } from "@/lib/DialogProvider";
 import { useToast } from "@/lib/ToastProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
-import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
+import type { ShoppingItem, ShoppingList } from "@/lib/types";
 
 export default function ShoppingListView({
   list,
   initialItems,
-  initialCatalog,
   isOwner,
   ownerName,
 }: {
   list: ShoppingList;
   initialItems: ShoppingItem[];
-  initialCatalog: CatalogItem[];
   isOwner: boolean;
   ownerName?: string | null;
 }) {
@@ -40,7 +38,6 @@ export default function ShoppingListView({
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
-  const [catalog, setCatalog] = useState<CatalogItem[]>(initialCatalog);
   const [newItem, setNewItem] = useState("");
   const [newQuantity, setNewQuantity] = useState("");
   const [newCategory, setNewCategory] = useState<CategoryId | "">("");
@@ -48,7 +45,7 @@ export default function ShoppingListView({
   const [showScanner, setShowScanner] = useState(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "looking-up">("idle");
   const [viewerNames, setViewerNames] = useState<string[]>([]);
-  const [favoritesExpanded, setFavoritesExpanded] = useState(false);
+  const [showBought, setShowBought] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,7 +70,6 @@ export default function ShoppingListView({
   useEffect(() => {
     const supabase = createClient();
     let itemsChannel: ReturnType<typeof supabase.channel> | undefined;
-    let catalogChannel: ReturnType<typeof supabase.channel> | undefined;
     let presenceChannel: ReturnType<typeof supabase.channel> | undefined;
     let cancelled = false;
 
@@ -152,30 +148,6 @@ export default function ShoppingListView({
         )
         .subscribe();
 
-      catalogChannel = supabase
-        .channel(`list_item_catalog:${list.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "list_item_catalog",
-            filter: `list_id=eq.${list.id}`,
-          },
-          (payload) => {
-            setCatalog((current) => {
-              if (payload.eventType === "DELETE") {
-                const removed = payload.old as CatalogItem;
-                return current.filter((c) => c.id !== removed.id);
-              }
-              const incoming = payload.new as CatalogItem;
-              const withoutIncoming = current.filter((c) => c.id !== incoming.id);
-              return [...withoutIncoming, incoming];
-            });
-          },
-        )
-        .subscribe();
-
       // Who else currently has this list open — a lightweight "you're not
       // alone here" signal, no DB table involved (Realtime Presence is
       // purely in-memory, tied to the socket connection).
@@ -213,69 +185,9 @@ export default function ShoppingListView({
     return () => {
       cancelled = true;
       if (itemsChannel) supabase.removeChannel(itemsChannel);
-      if (catalogChannel) supabase.removeChannel(catalogChannel);
       if (presenceChannel) supabase.removeChannel(presenceChannel);
     };
   }, [list.id]);
-
-  const pendingNames = useMemo(
-    () => new Set(items.filter((i) => !i.is_checked).map((i) => i.name.toLowerCase())),
-    [items],
-  );
-
-  // "Quick add" is just your most recently used items — no scrollbar, no
-  // favoriting from here; it's a short, fixed-size strip so it never eats
-  // much vertical space.
-  const suggestions = useMemo(() => {
-    const query = newItem.trim().toLowerCase();
-    return [...catalog]
-      .filter((c) => !c.is_favorite)
-      .filter((c) => !pendingNames.has(c.name.toLowerCase()))
-      .filter((c) => (query ? c.name.toLowerCase().includes(query) : true))
-      .sort((a, b) => b.last_used_at.localeCompare(a.last_used_at))
-      .slice(0, query ? 6 : 8);
-  }, [catalog, pendingNames, newItem]);
-
-  // Favorites always show (not just when recently used) so "usual buys"
-  // stay one tap away even if it's been a while since you last needed one.
-  const favorites = useMemo(() => {
-    return [...catalog]
-      .filter((c) => c.is_favorite)
-      .filter((c) => !pendingNames.has(c.name.toLowerCase()))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [catalog, pendingNames]);
-
-  // Lets item chips in the actual list (not just catalog suggestions) show
-  // and toggle favorite status — marking a favorite from a real item you're
-  // shopping for reads more naturally than starring a suggestion chip.
-  const catalogByName = useMemo(() => {
-    const map = new Map<string, CatalogItem>();
-    for (const c of catalog) map.set(c.name.toLowerCase(), c);
-    return map;
-  }, [catalog]);
-
-  async function toggleFavorite(catalogItem: CatalogItem) {
-    const nextFavorite = !catalogItem.is_favorite;
-    setCatalog((current) =>
-      current.map((c) => (c.id === catalogItem.id ? { ...c, is_favorite: nextFavorite } : c)),
-    );
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("list_item_catalog")
-      .update({ is_favorite: nextFavorite })
-      .eq("id", catalogItem.id);
-    if (error) {
-      setCatalog((current) =>
-        current.map((c) => (c.id === catalogItem.id ? catalogItem : c)),
-      );
-    }
-  }
-
-  async function addAllFavorites() {
-    for (const fav of favorites) {
-      await addItemByName(fav.name, undefined, fav.category as CategoryId | null);
-    }
-  }
 
   async function addItemByName(rawName: string, rawQuantity?: string, rawCategory?: CategoryId | null) {
     const name = rawName.trim();
@@ -353,20 +265,6 @@ export default function ShoppingListView({
       if (withoutTemp.some((i) => i.id === data.id)) return withoutTemp;
       return [...withoutTemp, data as ShoppingItem];
     });
-
-    if (!error) {
-      setCatalog((current) => {
-        const existing = current.find((c) => c.name.toLowerCase() === name.toLowerCase());
-        if (existing) {
-          return current.map((c) =>
-            c.id === existing.id
-              ? { ...c, use_count: c.use_count + 1, last_used_at: new Date().toISOString() }
-              : c,
-          );
-        }
-        return current;
-      });
-    }
 
     setIsAdding(false);
   }
@@ -586,84 +484,33 @@ export default function ShoppingListView({
             </p>
           )}
 
-          {favorites.length > 0 && !newItem.trim() && (
-            <div className="mb-6">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
-                  ⭐ Favorites
-                </p>
-                <div className="flex items-center gap-3">
-                  {favorites.length > 1 && (
-                    <button
-                      onClick={addAllFavorites}
-                      className="font-hand touch-manipulation text-xs font-medium text-[var(--accent-food)] hover:underline"
-                    >
-                      + Add all
-                    </button>
-                  )}
-                  {favorites.length > 4 && (
-                    <button
-                      onClick={() => setFavoritesExpanded((v) => !v)}
-                      className="font-hand touch-manipulation text-xs font-medium text-gray-500 dark:text-gray-400 hover:underline"
-                    >
-                      {favoritesExpanded ? "Show less" : `Show all (${favorites.length})`}
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div
-                className={
-                  favoritesExpanded
-                    ? "flex flex-wrap gap-2"
-                    : "flex flex-nowrap gap-2 overflow-x-auto pb-1"
-                }
-              >
-                {favorites.map((c) => (
-                  <CatalogChip
-                    key={c.id}
-                    item={c}
-                    onAdd={() => addItemByName(c.name, undefined, c.category as CategoryId | null)}
-                    onToggleFavorite={() => toggleFavorite(c)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {suggestions.length > 0 && (
-            <div className="mb-6">
-              {!newItem.trim() && (
-                <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
-                  Quick add
-                </p>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {suggestions.map((c) => (
-                  <CatalogChip
-                    key={c.id}
-                    item={c}
-                    onAdd={() => addItemByName(c.name, undefined, c.category as CategoryId | null)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
           {items.length === 0 && (
             <p className="font-hand py-12 text-center text-lg text-gray-400 dark:text-gray-500">
               The list is empty. Write something above to get started.
             </p>
           )}
 
-          <div className="space-y-4">
+          {items.length > 0 && pending.length === 0 && !trimmedNewItem && (
+            <p className="font-hand py-12 text-center text-lg text-gray-400 dark:text-gray-500">
+              🎉 Nothing left to buy.
+            </p>
+          )}
+
+          {pending.length > 0 && (
+            <p className="mb-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
+              🛒 {pending.length} item{pending.length === 1 ? "" : "s"} to buy
+            </p>
+          )}
+
+          <div className="space-y-5">
             {pendingByCategory.map((group) => (
               <div key={group.id}>
                 {pendingByCategory.length > 1 && (
-                  <p className="mb-1.5 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
+                  <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
                     {group.icon} {group.label}
                   </p>
                 )}
-                <ul className="flex flex-wrap gap-2">
+                <ul className="flex flex-wrap gap-2.5">
                   {group.items.map((item) => (
                     <ItemChip
                       key={item.id}
@@ -671,8 +518,6 @@ export default function ShoppingListView({
                       onToggle={toggleItem}
                       onDelete={deleteItem}
                       isMatch={item.id === existingPendingMatch?.id}
-                      catalogItem={catalogByName.get(item.name.toLowerCase())}
-                      onToggleFavorite={toggleFavorite}
                     />
                   ))}
                 </ul>
@@ -681,22 +526,21 @@ export default function ShoppingListView({
           </div>
 
           {checked.length > 0 && (
-            <div className="mt-6">
-              <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
-                Checked ({checked.length})
-              </p>
-              <ul className="flex flex-wrap gap-2">
-                {checked.map((item) => (
-                  <ItemChip
-                    key={item.id}
-                    item={item}
-                    onToggle={toggleItem}
-                    onDelete={deleteItem}
-                    catalogItem={catalogByName.get(item.name.toLowerCase())}
-                    onToggleFavorite={toggleFavorite}
-                  />
-                ))}
-              </ul>
+            <div className="mt-8 border-t border-gray-100 pt-4 dark:border-gray-800">
+              <button
+                onClick={() => setShowBought((v) => !v)}
+                className="flex touch-manipulation items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+              >
+                <span className={`inline-block transition-transform ${showBought ? "rotate-90" : ""}`}>▸</span>
+                Bought ({checked.length})
+              </button>
+              {showBought && (
+                <ul className="mt-2.5 flex flex-wrap gap-1.5 opacity-60">
+                  {checked.map((item) => (
+                    <ItemChip key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} small />
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </main>
@@ -724,15 +568,13 @@ function ItemChip({
   onToggle,
   onDelete,
   isMatch,
-  catalogItem,
-  onToggleFavorite,
+  small,
 }: {
   item: ShoppingItem;
   onToggle: (item: ShoppingItem) => void;
   onDelete: (item: ShoppingItem) => void;
   isMatch?: boolean;
-  catalogItem?: CatalogItem;
-  onToggleFavorite?: (catalogItem: CatalogItem) => void;
+  small?: boolean;
 }) {
   return (
     <li
@@ -747,15 +589,17 @@ function ItemChip({
       <button
         type="button"
         onClick={() => onToggle(item)}
-        className="flex touch-manipulation items-center gap-1.5 py-1.5 pr-1 pl-2.5 text-left"
+        className={`flex touch-manipulation items-center gap-1.5 text-left ${
+          small ? "py-1 pr-1 pl-2" : "py-2 pr-1 pl-3"
+        }`}
       >
         <span
-          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-            item.is_checked ? "border-[#2b3a55] bg-[#2b3a55]" : "border-gray-400 bg-white dark:bg-gray-900"
-          }`}
+          className={`flex shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+            small ? "h-3.5 w-3.5" : "h-5 w-5"
+          } ${item.is_checked ? "border-[#2b3a55] bg-[#2b3a55]" : "border-gray-400 bg-white dark:bg-gray-900"}`}
         >
           {item.is_checked && (
-            <svg viewBox="0 0 16 16" fill="none" className="h-2.5 w-2.5">
+            <svg viewBox="0 0 16 16" fill="none" className={small ? "h-2 w-2" : "h-3 w-3"}>
               <path
                 d="M3 8.5L6.5 12L13 4.5"
                 stroke="white"
@@ -766,74 +610,31 @@ function ItemChip({
             </svg>
           )}
         </span>
-        <span className="shrink-0 text-base leading-none">{getItemIcon(item.name)}</span>
+        <span className={`shrink-0 leading-none ${small ? "text-sm" : "text-xl"}`}>{getItemIcon(item.name)}</span>
         <span
-          className={`font-hand text-base whitespace-nowrap ${
+          className={`font-hand whitespace-nowrap ${small ? "text-sm" : "text-lg"} ${
             item.is_checked
               ? "text-gray-400 dark:text-gray-500 line-through decoration-red-500 decoration-2"
               : "text-gray-900 dark:text-gray-100"
           }`}
         >
           {item.name}
-          {item.quantity && <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">×{item.quantity}</span>}
+          {item.quantity && (
+            <span className={`ml-1 text-gray-400 dark:text-gray-500 ${small ? "text-[10px]" : "text-xs"}`}>
+              ×{item.quantity}
+            </span>
+          )}
         </span>
       </button>
-      {catalogItem && onToggleFavorite && (
-        <button
-          onClick={() => onToggleFavorite(catalogItem)}
-          aria-label={catalogItem.is_favorite ? "Remove from favorites" : "Mark as favorite"}
-          className={`shrink-0 touch-manipulation rounded-full py-1.5 pl-1 text-sm ${
-            catalogItem.is_favorite ? "text-amber-500" : "text-gray-300 dark:text-gray-600 hover:text-amber-500"
-          }`}
-        >
-          {catalogItem.is_favorite ? "★" : "☆"}
-        </button>
-      )}
       <button
         onClick={() => onDelete(item)}
-        className="shrink-0 touch-manipulation rounded-full p-1.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-500"
+        className={`shrink-0 touch-manipulation rounded-full text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-500 ${
+          small ? "p-1 text-xs" : "p-2"
+        }`}
         aria-label="Delete item"
       >
         ✕
       </button>
     </li>
-  );
-}
-
-function CatalogChip({
-  item,
-  onAdd,
-  onToggleFavorite,
-}: {
-  item: CatalogItem;
-  onAdd: () => void;
-  onToggleFavorite?: () => void;
-}) {
-  return (
-    <div className="flex shrink-0 items-center rounded-full border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-500">
-      <button
-        onClick={onAdd}
-        className={`font-hand flex touch-manipulation items-center gap-1.5 py-1.5 text-base text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 ${
-          onToggleFavorite ? "pr-1 pl-3" : "px-3"
-        }`}
-      >
-        <span>{getItemIcon(item.name)}</span>
-        {item.name}
-      </button>
-      {onToggleFavorite && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFavorite();
-          }}
-          aria-label={item.is_favorite ? "Remove from favorites" : "Add to favorites"}
-          className={`shrink-0 touch-manipulation rounded-full py-1.5 pr-2.5 pl-1 text-sm ${
-            item.is_favorite ? "text-amber-500" : "text-gray-300 dark:text-gray-600 hover:text-amber-500"
-          }`}
-        >
-          {item.is_favorite ? "★" : "☆"}
-        </button>
-      )}
-    </div>
   );
 }
