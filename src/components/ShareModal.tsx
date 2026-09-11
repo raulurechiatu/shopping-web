@@ -50,24 +50,24 @@ export default function ShareModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl"
+        className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 p-6 text-center shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-hand text-2xl text-gray-900">{title}</h2>
-        <p className="mt-1 text-sm text-gray-500">{description}</p>
+        <h2 className="font-hand text-2xl text-gray-900 dark:text-gray-100">{title}</h2>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>
 
-        <div className="mx-auto mt-5 w-fit rounded-xl border-2 border-dashed border-gray-300 bg-white px-6 py-4">
-          <span className="font-mono text-4xl font-bold tracking-[0.25em] text-gray-900">
+        <div className="mx-auto mt-5 w-fit rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-4">
+          <span className="font-mono text-4xl font-bold tracking-[0.25em] text-gray-900 dark:text-gray-100">
             {code}
           </span>
         </div>
 
         <button
           onClick={() => copy(joinUrl, "link")}
-          className="mt-3 flex w-full touch-manipulation items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left"
+          className="mt-3 flex w-full touch-manipulation items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-left"
         >
-          <span className="flex-1 truncate text-xs text-gray-500">{joinUrl}</span>
-          <span className="shrink-0 text-xs font-medium text-gray-700">
+          <span className="flex-1 truncate text-xs text-gray-500 dark:text-gray-400">{joinUrl}</span>
+          <span className="shrink-0 text-xs font-medium text-gray-700 dark:text-gray-300">
             {copied === "link" ? "Copied!" : "Copy link"}
           </span>
         </button>
@@ -83,19 +83,19 @@ export default function ShareModal({
           )}
           <a
             href={mailtoHref}
-            className="touch-manipulation rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="touch-manipulation rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Email invite
           </a>
           <button
             onClick={() => copy(code, "code")}
-            className="touch-manipulation rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="touch-manipulation rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             {copied === "code" ? "Copied!" : "Copy code"}
           </button>
           <button
             onClick={onClose}
-            className="touch-manipulation px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+            className="touch-manipulation px-4 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700"
           >
             Close
           </button>

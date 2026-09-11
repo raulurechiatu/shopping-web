@@ -97,16 +97,16 @@ export default function AddRecipeToListModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+        className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-hand text-center text-2xl text-gray-900">Add ingredients to a list</h2>
+        <h2 className="font-hand text-center text-2xl text-gray-900 dark:text-gray-100">Add ingredients to a list</h2>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          <div className="flex gap-2 rounded-lg bg-gray-100 p-1 text-sm font-medium">
+          <div className="flex gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 p-1 text-sm font-medium">
             <button
               type="button"
-              className={`flex-1 rounded-md py-2 ${mode === "existing" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
+              className={`flex-1 rounded-md py-2 ${mode === "existing" ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}
               onClick={() => setMode("existing")}
               disabled={userLists.length === 0}
             >
@@ -114,7 +114,7 @@ export default function AddRecipeToListModal({
             </button>
             <button
               type="button"
-              className={`flex-1 rounded-md py-2 ${mode === "new" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
+              className={`flex-1 rounded-md py-2 ${mode === "new" ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}
               onClick={() => setMode("new")}
             >
               New list
@@ -126,7 +126,7 @@ export default function AddRecipeToListModal({
               <select
                 value={selectedListId}
                 onChange={(e) => setSelectedListId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm focus:border-[var(--accent-food)] focus:outline-none"
               >
                 {userLists.map((list) => (
                   <option key={list.id} value={list.id}>
@@ -135,14 +135,14 @@ export default function AddRecipeToListModal({
                 ))}
               </select>
             ) : (
-              <p className="text-sm text-gray-500">You don&apos;t have any lists yet.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">You don&apos;t have any lists yet.</p>
             )
           ) : (
             <input
               value={newListName}
               onChange={(e) => setNewListName(e.target.value)}
               placeholder="List name"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm focus:border-[var(--accent-food)] focus:outline-none"
             />
           )}
 
@@ -158,7 +158,7 @@ export default function AddRecipeToListModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-full touch-manipulation px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+            className="w-full touch-manipulation px-4 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700"
           >
             Cancel
           </button>

@@ -25,9 +25,9 @@ export default async function ListsPage() {
     .filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-[#f7f6f3] px-4 py-10">
+    <div className="min-h-screen bg-[#f7f6f3] dark:bg-[#14171c] px-4 py-10">
       <div className="mx-auto flex max-w-sm flex-col items-center gap-6">
-        <h1 className="w-full font-script text-3xl font-bold text-gray-900">Your Lists</h1>
+        <h1 className="w-full font-script text-3xl font-bold text-gray-900 dark:text-gray-100">Your Lists</h1>
 
         {lists.length > 0 && (
           <ul className="w-full space-y-2">

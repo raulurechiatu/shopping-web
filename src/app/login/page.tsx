@@ -133,10 +133,10 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f7f6f3] px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm">
-        <h1 className="mb-1 text-2xl font-semibold text-gray-900">Shopping List</h1>
-        <p className="mb-6 text-sm text-gray-500">
+    <div className="flex min-h-screen items-center justify-center bg-[#f7f6f3] dark:bg-[#14171c] px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 p-8 shadow-sm">
+        <h1 className="mb-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">Shopping List</h1>
+        <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
           {joinCode &&
             "You've been invited to a shopping list. Sign in, or join below with no account needed."}
           {recipeCode &&
@@ -149,7 +149,7 @@ function LoginForm() {
         <button
           type="button"
           onClick={handleGoogleSignIn}
-          className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -172,14 +172,14 @@ function LoginForm() {
           Continue with Google
         </button>
 
-        <div className="mb-4 flex items-center gap-3 text-xs text-gray-400">
-          <div className="h-px flex-1 bg-gray-200" />
+        <div className="mb-4 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+          <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
           or
-          <div className="h-px flex-1 bg-gray-200" />
+          <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
         </div>
 
         {status === "sent" ? (
-          <p className="rounded-lg bg-green-50 p-4 text-sm text-green-700">
+          <p className="rounded-lg bg-green-50 dark:bg-green-950 p-4 text-sm text-green-700 dark:text-green-300">
             Check your inbox at <strong>{email}</strong> for a sign-in link.
           </p>
         ) : (
@@ -190,7 +190,7 @@ function LoginForm() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm focus:border-[var(--accent-food)] focus:outline-none"
             />
             <button
               type="submit"
@@ -203,17 +203,17 @@ function LoginForm() {
           </form>
         )}
 
-        <div className="my-4 flex items-center gap-3 text-xs text-gray-400">
-          <div className="h-px flex-1 bg-gray-200" />
+        <div className="my-4 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+          <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
           or
-          <div className="h-px flex-1 bg-gray-200" />
+          <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
         </div>
 
         {!showGuestForm ? (
           <button
             type="button"
             onClick={() => setShowGuestForm(true)}
-            className="w-full text-center text-sm text-gray-500 underline hover:text-gray-900"
+            className="w-full text-center text-sm text-gray-500 dark:text-gray-400 underline hover:text-gray-900 dark:hover:text-gray-100"
           >
             Have an invite code? Join without an account
           </button>
@@ -225,12 +225,12 @@ function LoginForm() {
               placeholder="Invite code"
               value={guestCode}
               onChange={(e) => setGuestCode(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm focus:border-[var(--accent-food)] focus:outline-none"
             />
             <button
               type="submit"
               disabled={guestStatus === "joining"}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
             >
               {guestStatus === "joining"
                 ? "Joining..."
@@ -239,7 +239,7 @@ function LoginForm() {
                   : "Join as guest"}
             </button>
             {guestError && <p className="text-sm text-red-600">{guestError}</p>}
-            <p className="text-center text-xs text-gray-400">
+            <p className="text-center text-xs text-gray-400 dark:text-gray-500">
               No email needed — you&apos;ll get access right away.
             </p>
           </form>

@@ -1,6 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Kalam, Patrick_Hand } from "next/font/google";
+import { ThemeProvider } from "@/lib/ThemeProvider";
 import "./globals.css";
+
+const THEME_INIT_SCRIPT = `
+(function () {
+  try {
+    var pref = localStorage.getItem("theme");
+    var isDark = pref === "dark" || ((pref === "system" || !pref) && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.classList.toggle("dark", isDark);
+  } catch (e) {}
+})();
+`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,8 +65,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${kalam.variable} ${patrickHand.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

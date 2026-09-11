@@ -34,17 +34,17 @@ export default function CreateOrJoinList() {
   }
 
   return (
-    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-sm">
-      <div className="mb-6 flex gap-2 rounded-lg bg-gray-100 p-1 text-sm font-medium">
+    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-sm">
+      <div className="mb-6 flex gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 p-1 text-sm font-medium">
         <button
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "create" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "create" ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}
           onClick={() => setMode("create")}
         >
           <span>➕</span>
           Create list
         </button>
         <button
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "join" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 ${mode === "join" ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}
           onClick={() => setMode("join")}
         >
           <span>🔑</span>
@@ -59,7 +59,7 @@ export default function CreateOrJoinList() {
             onChange={(e) => setName(e.target.value)}
             placeholder="List name"
             required
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm focus:border-[var(--accent-food)] focus:outline-none"
           />
         ) : (
           <input
@@ -67,7 +67,7 @@ export default function CreateOrJoinList() {
             onChange={(e) => setCode(e.target.value)}
             placeholder="Invite code"
             required
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#2b3a55] focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm focus:border-[var(--accent-food)] focus:outline-none"
           />
         )}
         <button

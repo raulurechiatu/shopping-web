@@ -32,6 +32,7 @@ export default function RecipeForm({
 }) {
   const router = useRouter();
   const accent = ACCENT[kind];
+  const accentVar = kind === "cocktail" ? "var(--accent-cocktail)" : "var(--accent-food)";
   const noun = kind === "cocktail" ? "cocktail" : "recipe";
   const [name, setName] = useState(initialName);
   const [steps, setSteps] = useState<string[]>(
@@ -158,7 +159,7 @@ export default function RecipeForm({
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-lg space-y-5">
       <div>
-        <label className="mb-1 block text-xs font-medium tracking-wide text-gray-400 uppercase">
+        <label className="mb-1 block text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
           {kind === "cocktail" ? "Cocktail name" : "Recipe name"}
         </label>
         <input
@@ -166,13 +167,13 @@ export default function RecipeForm({
           onChange={(e) => setName(e.target.value)}
           placeholder={kind === "cocktail" ? "e.g. Old Fashioned" : "e.g. Sunday roast chicken"}
           required
-          style={{ ["--accent" as string]: accent }}
-          className="font-hand w-full border-b-2 border-gray-300 bg-transparent px-1 py-2 text-xl text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent)] focus:outline-none"
+          style={{ ["--accent" as string]: accentVar }}
+          className="font-hand w-full border-b-2 border-gray-300 dark:border-gray-700 bg-transparent px-1 py-2 text-xl text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-[var(--accent)] focus:outline-none"
         />
       </div>
 
       <div>
-        <label className="mb-2 block text-xs font-medium tracking-wide text-gray-400 uppercase">
+        <label className="mb-2 block text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
           Ingredients
         </label>
         <div className="space-y-2">
@@ -182,20 +183,20 @@ export default function RecipeForm({
                 value={ing.name}
                 onChange={(e) => updateIngredient(index, "name", e.target.value)}
                 placeholder="Ingredient (EN or RO)"
-                style={{ ["--accent" as string]: accent }}
-                className="font-hand min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-[var(--accent)] focus:outline-none"
+                style={{ ["--accent" as string]: accentVar }}
+                className="font-hand min-w-0 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-base focus:border-[var(--accent)] focus:outline-none"
               />
               <input
                 value={ing.quantity}
                 onChange={(e) => updateIngredient(index, "quantity", e.target.value)}
                 placeholder="qty"
-                style={{ ["--accent" as string]: accent }}
-                className="font-hand w-16 shrink-0 rounded-lg border border-gray-300 bg-white px-2 py-2 text-base focus:border-[var(--accent)] focus:outline-none"
+                style={{ ["--accent" as string]: accentVar }}
+                className="font-hand w-16 shrink-0 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-2 text-base focus:border-[var(--accent)] focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => removeIngredientRow(index)}
-                className="shrink-0 touch-manipulation rounded-full p-2 text-gray-500 hover:bg-red-50 hover:text-red-500"
+                className="shrink-0 touch-manipulation rounded-full p-2 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-500"
                 aria-label="Remove ingredient"
               >
                 ✕
@@ -206,20 +207,20 @@ export default function RecipeForm({
         <button
           type="button"
           onClick={addIngredientRow}
-          className="mt-2 touch-manipulation text-sm font-medium text-gray-500 hover:text-gray-900"
+          className="mt-2 touch-manipulation text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
         >
           + Add ingredient
         </button>
       </div>
 
       <div>
-        <label className="mb-2 block text-xs font-medium tracking-wide text-gray-400 uppercase">
+        <label className="mb-2 block text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
           Instructions
         </label>
         <div className="space-y-2">
           {steps.map((step, index) => (
             <div key={index} className="flex items-start gap-2">
-              <span className="font-hand mt-2 w-5 shrink-0 text-right text-base text-gray-400">
+              <span className="font-hand mt-2 w-5 shrink-0 text-right text-base text-gray-400 dark:text-gray-500">
                 {index + 1}.
               </span>
               <input
@@ -232,13 +233,13 @@ export default function RecipeForm({
                       : "e.g. Preheat oven to 200°C"
                     : "Next step..."
                 }
-                style={{ ["--accent" as string]: accent }}
-                className="font-hand min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-[var(--accent)] focus:outline-none"
+                style={{ ["--accent" as string]: accentVar }}
+                className="font-hand min-w-0 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-base focus:border-[var(--accent)] focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => removeStep(index)}
-                className="shrink-0 touch-manipulation rounded-full p-2 text-gray-500 hover:bg-red-50 hover:text-red-500"
+                className="shrink-0 touch-manipulation rounded-full p-2 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-500"
                 aria-label="Remove step"
               >
                 ✕
@@ -249,7 +250,7 @@ export default function RecipeForm({
         <button
           type="button"
           onClick={addStep}
-          className="mt-2 touch-manipulation text-sm font-medium text-gray-500 hover:text-gray-900"
+          className="mt-2 touch-manipulation text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
         >
           + Add step
         </button>

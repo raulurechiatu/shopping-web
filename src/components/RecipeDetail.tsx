@@ -9,7 +9,7 @@ import AddRecipeToListModal from "@/components/AddRecipeToListModal";
 import ShareModal from "@/components/ShareModal";
 import type { Recipe, RecipeIngredient, ShoppingList } from "@/lib/types";
 
-const ACCENT = { food: "#2b3a55", cocktail: "#6b3fa0" } as const;
+const ACCENT_VAR = { food: "var(--accent-food)", cocktail: "var(--accent-cocktail)" } as const;
 
 export default function RecipeDetail({
   recipe,
@@ -28,7 +28,7 @@ export default function RecipeDetail({
   const [deleting, setDeleting] = useState(false);
 
   const isCocktail = recipe.kind === "cocktail";
-  const accent = ACCENT[recipe.kind];
+  const accentVar = ACCENT_VAR[recipe.kind];
   const backHref = isCocktail ? "/recipes/cocktails" : "/recipes";
   const backLabel = isCocktail ? "Cocktails" : "Recipes";
   const noun = isCocktail ? "cocktail" : "recipe";
@@ -53,17 +53,17 @@ export default function RecipeDetail({
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f6f3] px-0 py-0 sm:px-6 sm:py-10">
-      <div className="relative mx-auto min-h-screen w-full max-w-2xl bg-white shadow-none sm:min-h-0 sm:rounded-lg sm:shadow-xl">
+    <div className="min-h-screen bg-[#f7f6f3] dark:bg-[#14171c] px-0 py-0 sm:px-6 sm:py-10">
+      <div className="relative mx-auto min-h-screen w-full max-w-2xl bg-white dark:bg-gray-900 shadow-none sm:min-h-0 sm:rounded-lg sm:shadow-xl">
         <div
           className="pointer-events-none absolute top-0 bottom-0 left-10 w-px sm:left-12"
           style={{ backgroundColor: isCocktail ? "#c9a8e0" : "rgba(252,165,165,0.7)" }}
         />
 
-        <header className="relative border-b border-gray-200 px-5 pt-6 pb-4 pl-16 sm:pl-20">
+        <header className="relative border-b border-gray-200 dark:border-gray-700 px-5 pt-6 pb-4 pl-16 sm:pl-20">
           <Link
             href={backHref}
-            className="mb-2 inline-flex touch-manipulation items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+            className="mb-2 inline-flex touch-manipulation items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
               <path
@@ -74,16 +74,16 @@ export default function RecipeDetail({
             </svg>
             {backLabel}
           </Link>
-          <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">
+          <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900 dark:text-gray-100">
             <span className="mr-1">{titleIcon}</span>
             {recipe.name}
           </h1>
-          {!isOwner && <p className="mt-1 text-xs text-gray-400">Shared with you — view only</p>}
+          {!isOwner && <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Shared with you — view only</p>}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowAddToList(true)}
-              style={{ borderColor: accent, color: accent }}
-              className="touch-manipulation rounded-full border bg-white px-3 py-1.5 text-xs font-medium shadow-sm hover:opacity-80"
+              style={{ borderColor: accentVar, color: accentVar }}
+              className="touch-manipulation rounded-full border bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium shadow-sm hover:opacity-80"
             >
               🛒 Add ingredients to a list
             </button>
@@ -91,20 +91,20 @@ export default function RecipeDetail({
               <>
                 <button
                   onClick={() => setShowShare(true)}
-                  className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"
+                  className="touch-manipulation rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 shadow-sm hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
                 >
                   🔗 Share
                 </button>
                 <Link
                   href={`/recipes/${recipe.id}/edit`}
-                  className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:border-gray-400 hover:text-gray-900"
+                  className="touch-manipulation rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 shadow-sm hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
                 >
                   ✏️ Edit
                 </Link>
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 shadow-sm hover:border-red-300 hover:text-red-500"
+                  className="touch-manipulation rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 shadow-sm hover:border-red-300 dark:hover:border-red-800 hover:text-red-500"
                 >
                   🗑️ Delete
                 </button>
@@ -114,21 +114,21 @@ export default function RecipeDetail({
         </header>
 
         <main className="px-5 py-5 pl-16 sm:pl-20">
-          <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
+          <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
             Ingredients
           </p>
           {ingredients.length === 0 ? (
-            <p className="font-hand text-lg text-gray-400">No ingredients yet.</p>
+            <p className="font-hand text-lg text-gray-400 dark:text-gray-500">No ingredients yet.</p>
           ) : (
             <ul className="flex flex-wrap gap-2">
               {ingredients.map((ing) => (
                 <li
                   key={ing.id}
-                  className="font-hand flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-base text-gray-900"
+                  className="font-hand flex items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-base text-gray-900 dark:text-gray-100"
                 >
                   <span>{getItemIcon(ing.name)}</span>
                   {ing.name}
-                  {ing.quantity && <span className="text-xs text-gray-400">×{ing.quantity}</span>}
+                  {ing.quantity && <span className="text-xs text-gray-400 dark:text-gray-500">×{ing.quantity}</span>}
                 </li>
               ))}
             </ul>
@@ -136,16 +136,16 @@ export default function RecipeDetail({
 
           {steps.length > 0 && (
             <div className="mt-8">
-              <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
+              <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
                 Instructions
               </p>
               <ol className="space-y-3">
                 {steps.map((step, index) => (
                   <li key={index} className="flex gap-3">
-                    <span className="font-hand shrink-0 text-lg" style={{ color: accent }}>
+                    <span className="font-hand shrink-0 text-lg" style={{ color: accentVar }}>
                       {index + 1}.
                     </span>
-                    <span className="font-hand text-lg text-gray-900">{step}</span>
+                    <span className="font-hand text-lg text-gray-900 dark:text-gray-100">{step}</span>
                   </li>
                 ))}
               </ol>

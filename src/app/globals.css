@@ -1,9 +1,23 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
   color-scheme: light;
+  /* Brand accents as text/border on a card use these directly, so they can
+     lighten in dark mode; solid-fill buttons keep the literal hex instead. */
+  --accent-food: #2b3a55;
+  --accent-cocktail: #6b3fa0;
+}
+
+:root.dark {
+  --background: #14171c;
+  --foreground: #e5e7eb;
+  color-scheme: dark;
+  --accent-food: #93a8d6;
+  --accent-cocktail: #c7a4ef;
 }
 
 @theme inline {

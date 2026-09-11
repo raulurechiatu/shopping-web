@@ -40,17 +40,17 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
   const noun = isCocktail ? "cocktail" : "recipe";
 
   return (
-    <div className="min-h-screen bg-[#f7f6f3] px-4 py-10">
+    <div className="min-h-screen bg-[#f7f6f3] dark:bg-[#14171c] px-4 py-10">
       <div className="mx-auto flex max-w-sm flex-col items-center gap-6">
-        <h1 className="w-full font-script text-3xl font-bold text-gray-900">
+        <h1 className="w-full font-script text-3xl font-bold text-gray-900 dark:text-gray-100">
           {isCocktail ? "🍸 Cocktails" : "Recipes"}
         </h1>
 
-        <div className="flex w-full gap-2 rounded-lg bg-gray-100 p-1 text-sm font-medium">
+        <div className="flex w-full gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 p-1 text-sm font-medium">
           <Link
             href="/recipes"
             className={`flex-1 rounded-md py-2 text-center ${
-              !isCocktail ? "bg-white shadow-sm" : "text-gray-500"
+              !isCocktail ? "bg-white dark:bg-gray-900 shadow-sm" : "text-gray-500 dark:text-gray-400"
             }`}
           >
             🍽️ Food
@@ -58,7 +58,7 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
           <Link
             href="/recipes/cocktails"
             className={`flex-1 rounded-md py-2 text-center ${
-              isCocktail ? "bg-white shadow-sm" : "text-gray-500"
+              isCocktail ? "bg-white dark:bg-gray-900 shadow-sm" : "text-gray-500 dark:text-gray-400"
             }`}
           >
             🍸 Cocktails
@@ -74,7 +74,7 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
         )}
 
         {recipes.length === 0 && (
-          <p className="font-hand text-center text-lg text-gray-500">
+          <p className="font-hand text-center text-lg text-gray-500 dark:text-gray-400">
             {isCocktail
               ? "No cocktails yet — add one and its ingredients can go straight to a shopping list."
               : "No recipes yet — add one and its ingredients can go straight to a shopping list."}

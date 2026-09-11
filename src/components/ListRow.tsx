@@ -29,16 +29,16 @@ export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner
   }
 
   return (
-    <li className="flex items-center gap-2 rounded-xl bg-white px-4 py-3.5 shadow-sm">
+    <li className="flex items-center gap-2 rounded-xl bg-white dark:bg-gray-900 px-4 py-3.5 shadow-sm">
       <Link href={`/lists/${list.id}`} className="min-w-0 flex-1">
-        <span className="font-hand block truncate text-lg text-gray-900">
+        <span className="font-hand block truncate text-lg text-gray-900 dark:text-gray-100">
           <span className="mr-1">{getItemIcon(list.name)}</span>
           {list.name}
         </span>
       </Link>
       <button
         onClick={() => setShowInvite(true)}
-        className="flex shrink-0 touch-manipulation items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+        className="flex shrink-0 touch-manipulation items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
       >
         <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
           <path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 000 6h.17A3 3 0 0015 8zM5 10a3 3 0 100 6 3 3 0 000-6zm10 2a3 3 0 100 6 3 3 0 000-6z" />
@@ -51,7 +51,7 @@ export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner
           onClick={handleDelete}
           disabled={deleting}
           aria-label="Delete list"
-          className="shrink-0 touch-manipulation rounded-full p-2 text-gray-500 hover:bg-red-50 hover:text-red-500"
+          className="shrink-0 touch-manipulation rounded-full p-2 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-500"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
             <path

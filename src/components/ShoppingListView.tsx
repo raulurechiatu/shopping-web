@@ -242,15 +242,15 @@ export default function ShoppingListView({
     .sort((a, b) => (b.checked_at ?? "").localeCompare(a.checked_at ?? ""));
 
   return (
-    <div className="min-h-screen bg-[#f7f6f3] px-0 py-0 sm:px-6 sm:py-10">
-      <div className="relative mx-auto min-h-screen w-full max-w-2xl bg-white shadow-none sm:min-h-0 sm:rounded-lg sm:shadow-xl">
+    <div className="min-h-screen bg-[#f7f6f3] dark:bg-[#14171c] px-0 py-0 sm:px-6 sm:py-10">
+      <div className="relative mx-auto min-h-screen w-full max-w-2xl bg-white dark:bg-gray-900 shadow-none sm:min-h-0 sm:rounded-lg sm:shadow-xl">
         {/* Notebook margin line */}
         <div className="pointer-events-none absolute top-0 bottom-0 left-10 w-px bg-red-300/70 sm:left-12" />
 
-        <header className="relative border-b border-gray-200 px-5 pt-6 pb-4 pl-16 sm:pl-20">
+        <header className="relative border-b border-gray-200 dark:border-gray-700 px-5 pt-6 pb-4 pl-16 sm:pl-20">
           <Link
             href="/lists"
-            className="mb-2 inline-flex touch-manipulation items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+            className="mb-2 inline-flex touch-manipulation items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
               <path
@@ -261,14 +261,14 @@ export default function ShoppingListView({
             </svg>
             Your Lists
           </Link>
-          <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">
+          <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900 dark:text-gray-100">
             <span className="mr-1">{getItemIcon(list.name)}</span>
             {list.name}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowInvite(true)}
-              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-400 hover:text-gray-900"
+              className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
             >
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
                 <path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 000 6h.17A3 3 0 0015 8zM5 10a3 3 0 100 6 3 3 0 000-6zm10 2a3 3 0 100 6 3 3 0 000-6z" />
@@ -280,7 +280,7 @@ export default function ShoppingListView({
               <button
                 onClick={handleDeleteList}
                 disabled={deleting}
-                className="touch-manipulation rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 hover:border-red-300 hover:text-red-500"
+                className="touch-manipulation rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:border-red-300 dark:hover:border-red-800 hover:text-red-500"
               >
                 🗑️ Delete list
               </button>
@@ -296,13 +296,13 @@ export default function ShoppingListView({
               value={newItem}
               onChange={(e) => setNewItem(e.target.value)}
               placeholder="Write an item... (EN or RO)"
-              className="font-hand min-w-0 flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-lg text-gray-900 placeholder:text-gray-400 focus:border-[#2b3a55] focus:outline-none"
+              className="font-hand min-w-0 flex-1 border-b-2 border-gray-300 dark:border-gray-700 bg-transparent px-1 py-2 text-lg text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-[var(--accent-food)] focus:outline-none"
             />
             <input
               value={newQuantity}
               onChange={(e) => setNewQuantity(e.target.value)}
               placeholder="qty"
-              className="font-hand w-16 shrink-0 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-lg text-gray-900 placeholder:text-gray-400 focus:border-[#2b3a55] focus:outline-none"
+              className="font-hand w-16 shrink-0 border-b-2 border-gray-300 dark:border-gray-700 bg-transparent px-1 py-2 text-lg text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-[var(--accent-food)] focus:outline-none"
             />
             <button
               type="submit"
@@ -316,7 +316,7 @@ export default function ShoppingListView({
           {suggestions.length > 0 && (
             <div className="mb-6">
               {!newItem.trim() && (
-                <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
+                <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
                   Quick add
                 </p>
               )}
@@ -325,7 +325,7 @@ export default function ShoppingListView({
                   <button
                     key={c.id}
                     onClick={() => addItemByName(c.name)}
-                    className="font-hand flex shrink-0 touch-manipulation items-center gap-1.5 rounded-full border border-dashed border-gray-300 bg-white px-3 py-1.5 text-base text-gray-700 hover:border-gray-400 hover:bg-gray-50 sm:shrink"
+                    className="font-hand flex shrink-0 touch-manipulation items-center gap-1.5 rounded-full border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-base text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 sm:shrink"
                   >
                     <span>{getItemIcon(c.name)}</span>
                     {c.name}
@@ -336,7 +336,7 @@ export default function ShoppingListView({
           )}
 
           {pending.length === 0 && checked.length === 0 && (
-            <p className="font-hand py-12 text-center text-lg text-gray-400">
+            <p className="font-hand py-12 text-center text-lg text-gray-400 dark:text-gray-500">
               The list is empty. Write something above to get started.
             </p>
           )}
@@ -349,7 +349,7 @@ export default function ShoppingListView({
 
           {checked.length > 0 && (
             <div className="mt-6">
-              <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
+              <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
                 Checked ({checked.length})
               </p>
               <ul className="flex flex-wrap gap-2">
@@ -391,7 +391,7 @@ function ItemChip({
   return (
     <li
       className={`flex items-center rounded-full border ${
-        item.is_checked ? "border-gray-200 bg-gray-100" : "border-gray-300 bg-white"
+        item.is_checked ? "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800" : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
       }`}
     >
       <button
@@ -401,7 +401,7 @@ function ItemChip({
       >
         <span
           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-            item.is_checked ? "border-[#2b3a55] bg-[#2b3a55]" : "border-gray-400 bg-white"
+            item.is_checked ? "border-[#2b3a55] bg-[#2b3a55]" : "border-gray-400 bg-white dark:bg-gray-900"
           }`}
         >
           {item.is_checked && (
@@ -420,17 +420,17 @@ function ItemChip({
         <span
           className={`font-hand text-base whitespace-nowrap ${
             item.is_checked
-              ? "text-gray-400 line-through decoration-red-500 decoration-2"
-              : "text-gray-900"
+              ? "text-gray-400 dark:text-gray-500 line-through decoration-red-500 decoration-2"
+              : "text-gray-900 dark:text-gray-100"
           }`}
         >
           {item.name}
-          {item.quantity && <span className="ml-1 text-xs text-gray-400">×{item.quantity}</span>}
+          {item.quantity && <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">×{item.quantity}</span>}
         </span>
       </button>
       <button
         onClick={() => onDelete(item)}
-        className="shrink-0 touch-manipulation rounded-full p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-500"
+        className="shrink-0 touch-manipulation rounded-full p-1.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-500"
         aria-label="Delete item"
       >
         ✕

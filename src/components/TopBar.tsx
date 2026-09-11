@@ -13,9 +13,9 @@ export default function TopBar() {
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 hidden border-b border-gray-200 bg-white sm:block">
+    <header className="fixed inset-x-0 top-0 z-40 hidden border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sm:block">
       <div className="mx-auto grid max-w-4xl grid-cols-3 items-center px-6 py-3">
-        <Link href="/lists" className="font-script justify-self-start text-xl font-bold text-gray-900">
+        <Link href="/lists" className="font-script justify-self-start text-xl font-bold text-gray-900 dark:text-gray-100">
           Shopping List
         </Link>
 
@@ -27,7 +27,7 @@ export default function TopBar() {
                 key={tab.href}
                 href={tab.href}
                 className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium [&_svg]:h-4 [&_svg]:w-4 ${
-                  active ? "bg-[#2b3a55] text-white" : "text-gray-500 hover:bg-gray-100"
+                  active ? "bg-[#2b3a55] text-white" : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
                 {tab.icon(active)}
@@ -40,7 +40,7 @@ export default function TopBar() {
         <Link
           href="/account"
           className={`flex items-center gap-1.5 justify-self-end rounded-full px-2.5 py-1.5 text-sm font-medium ${
-            accountActive ? "bg-[#2b3a55] text-white" : "text-gray-500 hover:bg-gray-100"
+            accountActive ? "bg-[#2b3a55] text-white" : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
           }`}
         >
           <UserAvatar user={user} size={22} className={accountActive ? "ring-2 ring-white/50" : ""} />
