@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import CreateOrJoinList from "@/components/CreateOrJoinList";
-import ListRow from "@/components/ListRow";
+import ListsGrid from "@/components/ListsGrid";
 import type { ShoppingList } from "@/lib/types";
 
 export default async function ListsPage() {
@@ -29,13 +29,7 @@ export default async function ListsPage() {
       <div className="mx-auto flex max-w-sm flex-col items-center gap-6">
         <h1 className="w-full font-script text-3xl font-bold text-gray-900 dark:text-gray-100">Your Lists</h1>
 
-        {lists.length > 0 && (
-          <ul className="w-full space-y-2">
-            {lists.map((list) => (
-              <ListRow key={list.id} list={list} isOwner={list.owner_id === user.id} />
-            ))}
-          </ul>
-        )}
+        <ListsGrid lists={lists} currentUserId={user.id} />
 
         <CreateOrJoinList />
       </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import RecipeRow from "@/components/RecipeRow";
+import RecipesGrid from "@/components/RecipesGrid";
 import type { Recipe, RecipeKind } from "@/lib/types";
 
 const ACCENT: Record<RecipeKind, string> = { food: "#2b3a55", cocktail: "#6b3fa0" };
@@ -65,21 +65,14 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
           </Link>
         </div>
 
-        {recipes.length > 0 && (
-          <ul className="w-full space-y-2">
-            {recipes.map(({ recipe, isShared }) => (
-              <RecipeRow key={recipe.id} recipe={recipe} isShared={isShared} />
-            ))}
-          </ul>
-        )}
-
-        {recipes.length === 0 && (
-          <p className="font-hand text-center text-lg text-gray-500 dark:text-gray-400">
-            {isCocktail
+        <RecipesGrid
+          recipes={recipes}
+          emptyMessage={
+            isCocktail
               ? "No cocktails yet — add one and its ingredients can go straight to a shopping list."
-              : "No recipes yet — add one and its ingredients can go straight to a shopping list."}
-          </p>
-        )}
+              : "No recipes yet — add one and its ingredients can go straight to a shopping list."
+          }
+        />
 
         <Link
           href={isCocktail ? "/recipes/cocktails/new" : "/recipes/new"}
