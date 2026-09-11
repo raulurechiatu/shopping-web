@@ -3,6 +3,7 @@
 // Food/Cocktails split exactly.
 
 import type { createClient } from "@/lib/supabase/client";
+import { expandSynonyms, termMatches } from "@/lib/ingredientSynonyms";
 import type { RecipeKind } from "@/lib/types";
 
 export type DiscoveredRecipe = {
@@ -11,12 +12,6 @@ export type DiscoveredRecipe = {
   thumbnail: string | null;
   ingredients: { name: string; quantity: string | null }[];
   instructions: string;
-};
-
-export type RecipeStub = {
-  externalId: string;
-  name: string;
-  thumbnail: string | null;
 };
 
 type RawEntry = Record<string, string | null>;
@@ -69,83 +64,6 @@ export async function searchCocktailRecipes(query: string): Promise<DiscoveredRe
   }
 }
 
-// filter.php only accepts a single ingredient on the free tier (matching
-// on several at once is a Patreon-only feature), so "what can I make"
-// runs one filter call per pantry item and merges the results client-side.
-async function searchMealsByIngredient(ingredient: string): Promise<RecipeStub[]> {
-  try {
-    const res = await fetch(
-      `https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(ingredient)}`,
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return ((data.meals ?? []) as RawEntry[]).map((m) => ({
-      externalId: m.idMeal!,
-      name: m.strMeal!,
-      thumbnail: m.strMealThumb,
-    }));
-  } catch {
-    return [];
-  }
-}
-
-async function searchCocktailsByIngredient(ingredient: string): Promise<RecipeStub[]> {
-  try {
-    const res = await fetch(
-      `https://www.thecocktaildb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(ingredient)}`,
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return ((data.drinks ?? []) as RawEntry[]).map((m) => ({
-      externalId: m.idDrink!,
-      name: m.strDrink!,
-      thumbnail: m.strDrinkThumb,
-    }));
-  } catch {
-    return [];
-  }
-}
-
-export async function lookupMealRecipe(id: string): Promise<DiscoveredRecipe | null> {
-  try {
-    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/lookup.php?i=${encodeURIComponent(id)}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const m = (data.meals ?? [])[0] as RawEntry | undefined;
-    if (!m) return null;
-    return {
-      externalId: m.idMeal!,
-      name: m.strMeal!,
-      thumbnail: m.strMealThumb,
-      ingredients: parseIngredients(m, 20),
-      instructions: m.strInstructions ?? "",
-    };
-  } catch {
-    return null;
-  }
-}
-
-export async function lookupCocktailRecipe(id: string): Promise<DiscoveredRecipe | null> {
-  try {
-    const res = await fetch(
-      `https://www.thecocktaildb.com/api/json/v1/1/lookup.php?i=${encodeURIComponent(id)}`,
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    const m = (data.drinks ?? [])[0] as RawEntry | undefined;
-    if (!m) return null;
-    return {
-      externalId: m.idDrink!,
-      name: m.strDrink!,
-      thumbnail: m.strDrinkThumb,
-      ingredients: parseIngredients(m, 15),
-      instructions: m.strInstructions ?? "",
-    };
-  } catch {
-    return null;
-  }
-}
-
 // The full recipe is included (not just the stub) so a match can be
 // previewed without a second fetch, and so "missing" can be computed
 // against the actual ingredient list rather than just the search terms
@@ -156,11 +74,68 @@ export type PantryMatch = {
   missingIngredients: string[];
 };
 
+// filter.php only matches a single *exact* canonical ingredient string
+// ("Light rum" and "Rum" are different ingredients to it, and plenty of
+// real recipe ingredients — like "Light rum" itself — aren't even in
+// either API's own ingredient list endpoint), so a pantry item of "rum"
+// (or its Romanian synonym "rom") would never reliably surface a Cuba
+// Libre through it. Both APIs' free tier does support listing every
+// recipe by first letter with full ingredient detail already included, so
+// "what can I make" instead fetches the whole catalog once (26 requests,
+// cached for the session) and matches pantry synonyms against each
+// recipe's actual ingredients directly — no exact-match guessing game.
+const LETTERS = "abcdefghijklmnopqrstuvwxyz".split("");
+
+let mealCatalogCache: Promise<DiscoveredRecipe[]> | null = null;
+let cocktailCatalogCache: Promise<DiscoveredRecipe[]> | null = null;
+
+async function fetchCatalogLetter(
+  url: string,
+  letter: string,
+  listKey: "meals" | "drinks",
+  count: number,
+): Promise<DiscoveredRecipe[]> {
+  try {
+    const res = await fetch(`${url}?f=${letter}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return ((data[listKey] ?? []) as RawEntry[]).map((m) => ({
+      externalId: (m.idMeal ?? m.idDrink)!,
+      name: (m.strMeal ?? m.strDrink)!,
+      thumbnail: m.strMealThumb ?? m.strDrinkThumb,
+      ingredients: parseIngredients(m, count),
+      instructions: m.strInstructions ?? "",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function listMealCatalog(): Promise<DiscoveredRecipe[]> {
+  if (!mealCatalogCache) {
+    mealCatalogCache = Promise.all(
+      LETTERS.map((l) => fetchCatalogLetter("https://www.themealdb.com/api/json/v1/1/search.php", l, "meals", 20)),
+    ).then((pages) => pages.flat());
+  }
+  return mealCatalogCache;
+}
+
+async function listCocktailCatalog(): Promise<DiscoveredRecipe[]> {
+  if (!cocktailCatalogCache) {
+    cocktailCatalogCache = Promise.all(
+      LETTERS.map((l) =>
+        fetchCatalogLetter("https://www.thecocktaildb.com/api/json/v1/1/search.php", l, "drinks", 15),
+      ),
+    ).then((pages) => pages.flat());
+  }
+  return cocktailCatalogCache;
+}
+
 // "What can I make?" — matches recipes against a pantry list (whatever's
-// currently on the user's shopping lists), one ingredient-filter call per
-// pantry item. Candidates are then fetched in full and ranked by fewest
-// missing ingredients first, so a recipe you're mostly stocked for still
-// surfaces even if it needs one or two things you don't have.
+// currently on the user's shopping lists), expanding each pantry item into
+// its EN/RO synonyms before matching, and ranked by fewest missing
+// ingredients first, so a recipe you're mostly stocked for still surfaces
+// even if it needs one or two things you don't have.
 export async function findRecipesFromIngredients(
   pantryItems: string[],
   kind: RecipeKind,
@@ -168,46 +143,24 @@ export async function findRecipesFromIngredients(
   const uniqueItems = Array.from(
     new Set(pantryItems.map((i) => i.trim().toLowerCase()).filter(Boolean)),
   ).slice(0, 15);
-  const searchFn = kind === "cocktail" ? searchCocktailsByIngredient : searchMealsByIngredient;
-  const lookupFn = kind === "cocktail" ? lookupCocktailRecipe : lookupMealRecipe;
+  if (uniqueItems.length === 0) return [];
 
-  const results = await Promise.all(
-    uniqueItems.map(async (ingredient) => ({ ingredient, stubs: await searchFn(ingredient) })),
-  );
+  const pantrySynonyms = uniqueItems.flatMap((item) => expandSynonyms(item));
+  const catalog = await (kind === "cocktail" ? listCocktailCatalog() : listMealCatalog());
 
-  const byId = new Map<string, { stub: RecipeStub; matchedCount: number }>();
-  for (const { stubs } of results) {
-    for (const stub of stubs) {
-      const existing = byId.get(stub.externalId);
-      if (existing) existing.matchedCount += 1;
-      else byId.set(stub.externalId, { stub, matchedCount: 1 });
+  const matches: PantryMatch[] = [];
+  for (const recipe of catalog) {
+    const have: string[] = [];
+    const missing: string[] = [];
+    for (const ing of recipe.ingredients) {
+      if (!ing.name.trim()) continue;
+      const inPantry = pantrySynonyms.some((s) => termMatches(ing.name, s));
+      (inPantry ? have : missing).push(ing.name);
     }
+    if (have.length > 0) matches.push({ recipe, haveIngredients: have, missingIngredients: missing });
   }
 
-  // Fetching full details is a second call per candidate, so bound the
-  // pool (by raw match count) before paying for it.
-  const candidates = Array.from(byId.values())
-    .sort((a, b) => b.matchedCount - a.matchedCount)
-    .slice(0, 20);
-
-  const withDetails = await Promise.all(
-    candidates.map(async ({ stub }): Promise<PantryMatch | null> => {
-      const full = await lookupFn(stub.externalId);
-      if (!full) return null;
-      const have: string[] = [];
-      const missing: string[] = [];
-      for (const ing of full.ingredients) {
-        const name = ing.name.trim().toLowerCase();
-        if (!name) continue;
-        const inPantry = uniqueItems.some((p) => name.includes(p) || p.includes(name));
-        (inPantry ? have : missing).push(ing.name);
-      }
-      return { recipe: full, haveIngredients: have, missingIngredients: missing };
-    }),
-  );
-
-  return withDetails
-    .filter((m): m is PantryMatch => m !== null && m.haveIngredients.length > 0)
+  return matches
     .sort(
       (a, b) =>
         a.missingIngredients.length - b.missingIngredients.length ||
