@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { searchMealRecipes, searchCocktailRecipes, type DiscoveredRecipe } from "@/lib/recipeDiscovery";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import { useDialog } from "@/lib/DialogProvider";
 import type { RecipeKind } from "@/lib/types";
+
+const MIN_QUERY_LENGTH = 2;
+const DEBOUNCE_MS = 350;
 
 export default function DiscoverRecipes({ kind }: { kind: RecipeKind }) {
   const router = useRouter();
@@ -17,18 +20,35 @@ export default function DiscoverRecipes({ kind }: { kind: RecipeKind }) {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
   const noun = kind === "cocktail" ? "cocktail" : "recipe";
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!query.trim() || loading) return;
-    if (!(await requireOnline())) return;
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < MIN_QUERY_LENGTH) {
+      setResults([]);
+      setSearched(false);
+      setLoading(false);
+      return;
+    }
+    if (!navigator.onLine) {
+      // Autocomplete shouldn't interrupt typing with a dialog — just stay
+      // quiet until the explicit Add action needs to check again.
+      return;
+    }
+
+    const thisRequestId = ++requestIdRef.current;
     setLoading(true);
-    setSearched(true);
-    const found = kind === "cocktail" ? await searchCocktailRecipes(query) : await searchMealRecipes(query);
-    setResults(found);
-    setLoading(false);
-  }
+    const timer = setTimeout(async () => {
+      const found = kind === "cocktail" ? await searchCocktailRecipes(trimmed) : await searchMealRecipes(trimmed);
+      if (thisRequestId !== requestIdRef.current) return; // a newer keystroke superseded this
+      setResults(found);
+      setSearched(true);
+      setLoading(false);
+    }, DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [query, kind]);
 
   async function handleImport(recipe: DiscoveredRecipe) {
     if (!(await requireOnline())) return;
@@ -81,21 +101,17 @@ export default function DiscoverRecipes({ kind }: { kind: RecipeKind }) {
       <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase dark:text-gray-500">
         Discover {kind === "cocktail" ? "cocktails" : "recipes"}
       </p>
-      <form onSubmit={handleSearch} className="mb-3 flex gap-2">
+      <div className="relative mb-3">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={kind === "cocktail" ? "e.g. margarita" : "e.g. chicken curry"}
-          className="font-hand min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent-food)] focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
+          className="font-hand w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent-food)] focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
         />
-        <button
-          type="submit"
-          disabled={loading || !query.trim()}
-          className="shrink-0 touch-manipulation rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
-        >
+        <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">
           {loading ? "…" : "🔍"}
-        </button>
-      </form>
+        </span>
+      </div>
 
       {results.length > 0 && (
         <ul className="space-y-2">
@@ -130,7 +146,7 @@ export default function DiscoverRecipes({ kind }: { kind: RecipeKind }) {
 
       {searched && !loading && results.length === 0 && (
         <p className="font-hand text-center text-gray-400 dark:text-gray-500">
-          No {kind === "cocktail" ? "cocktails" : "recipes"} found for &ldquo;{query}&rdquo;.
+          No {kind === "cocktail" ? "cocktails" : "recipes"} found for &ldquo;{query.trim()}&rdquo;.
         </p>
       )}
     </div>
