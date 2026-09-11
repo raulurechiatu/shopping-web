@@ -46,6 +46,7 @@ export default function ShoppingListView({
   const [favorites, setFavorites] = useState<UserItem[]>(initialFavorites);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showBought, setShowBought] = useState(false);
+  const [showCategoryLabels, setShowCategoryLabels] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -519,33 +520,57 @@ export default function ShoppingListView({
           )}
 
           {pending.length > 0 && (
-            <p className="mb-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
-              🛒 {pending.length} item{pending.length === 1 ? "" : "s"} to buy
-            </p>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                🛒 {pending.length} item{pending.length === 1 ? "" : "s"} to buy
+              </p>
+              {pendingByCategory.length > 1 && (
+                <button
+                  onClick={() => setShowCategoryLabels((v) => !v)}
+                  className="touch-manipulation text-xs font-medium text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                >
+                  {showCategoryLabels ? "Hide categories" : "🏷️ Show categories"}
+                </button>
+              )}
+            </div>
           )}
 
-          <div className="space-y-4">
-            {pendingByCategory.map((group) => (
-              <div key={group.id}>
-                {pendingByCategory.length > 1 && (
-                  <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
-                    {group.icon} {group.label}
-                  </p>
-                )}
-                <ul className="flex flex-wrap gap-2.5">
-                  {group.items.map((item) => (
-                    <ItemChip
-                      key={item.id}
-                      item={item}
-                      onToggle={toggleItem}
-                      onDelete={deleteItem}
-                      isMatch={item.id === existingPendingMatch?.id}
-                    />
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          {showCategoryLabels ? (
+            <div className="space-y-4">
+              {pendingByCategory.map((group) => (
+                <div key={group.id}>
+                  {pendingByCategory.length > 1 && (
+                    <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
+                      {group.icon} {group.label}
+                    </p>
+                  )}
+                  <ul className="flex flex-wrap gap-2.5">
+                    {group.items.map((item) => (
+                      <ItemChip
+                        key={item.id}
+                        item={item}
+                        onToggle={toggleItem}
+                        onDelete={deleteItem}
+                        isMatch={item.id === existingPendingMatch?.id}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ul className="flex flex-wrap gap-2.5">
+              {pendingByCategory.flatMap((group) => group.items).map((item) => (
+                <ItemChip
+                  key={item.id}
+                  item={item}
+                  onToggle={toggleItem}
+                  onDelete={deleteItem}
+                  isMatch={item.id === existingPendingMatch?.id}
+                />
+              ))}
+            </ul>
+          )}
 
           {checked.length > 0 && (
             <div className="mt-8 border-t border-gray-100 pt-4 dark:border-gray-800">
@@ -671,7 +696,10 @@ function FavoritesRow({
   onAdd: (favorite: UserItem) => void;
 }) {
   return (
-    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900 dark:bg-amber-950/30">
+    <div className="mb-4">
+      <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
+        ⭐ Favorites
+      </p>
       <ul className="flex flex-wrap gap-1.5">
         {favorites.map((fav) => {
           const onList = pendingNames.has(fav.name.toLowerCase());
@@ -683,7 +711,7 @@ function FavoritesRow({
                 className={`flex touch-manipulation items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm ${
                   onList
                     ? "border-gray-200 bg-gray-100 text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500"
-                    : "border-amber-300 bg-white text-gray-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-amber-900/40"
+                    : "border-gray-300 bg-white text-gray-900 hover:border-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:border-gray-500"
                 }`}
               >
                 <span>{getItemIcon(fav.name)}</span>
