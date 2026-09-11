@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
 import { CATEGORY_ORDER, getItemCategory, type CategoryId } from "@/lib/itemCategories";
+import { lookupBarcode } from "@/lib/barcodeLookup";
 import ShareModal from "@/components/ShareModal";
+import BarcodeScanner from "@/components/BarcodeScanner";
 import { useDialog } from "@/lib/DialogProvider";
 import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
 
@@ -31,6 +33,8 @@ export default function ShoppingListView({
   const [newQuantity, setNewQuantity] = useState("");
   const [newCategory, setNewCategory] = useState<CategoryId | "">("");
   const [showInvite, setShowInvite] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanStatus, setScanStatus] = useState<"idle" | "looking-up">("idle");
   const [isAdding, setIsAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -209,6 +213,15 @@ export default function ShoppingListView({
     await addItemByName(newItem, newQuantity, newCategory || null);
   }
 
+  async function handleScan(code: string) {
+    setShowScanner(false);
+    setScanStatus("looking-up");
+    const name = await lookupBarcode(code);
+    setNewItem(name ?? code);
+    setScanStatus("idle");
+    inputRef.current?.focus();
+  }
+
   async function toggleItem(item: ShoppingItem) {
     const nextChecked = !item.is_checked;
     setItems((current) =>
@@ -332,6 +345,15 @@ export default function ShoppingListView({
               className="font-hand w-16 shrink-0 border-b-2 border-gray-300 dark:border-gray-700 bg-transparent px-1 py-2 text-lg text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-[var(--accent-food)] focus:outline-none"
             />
             <button
+              type="button"
+              onClick={() => setShowScanner(true)}
+              disabled={scanStatus === "looking-up"}
+              aria-label="Scan a barcode"
+              className="shrink-0 touch-manipulation rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2.5 text-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+            >
+              {scanStatus === "looking-up" ? "…" : "📷"}
+            </button>
+            <button
               type="submit"
               disabled={isAdding || !newItem.trim()}
               className="shrink-0 touch-manipulation rounded-lg bg-[#2b3a55] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1f2c42] disabled:opacity-40"
@@ -339,6 +361,8 @@ export default function ShoppingListView({
               Add
             </button>
           </form>
+
+          {showScanner && <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />}
 
           {newItem.trim() &&
             (() => {
