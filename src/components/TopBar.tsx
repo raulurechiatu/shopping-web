@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_TABS } from "@/components/navTabs";
-import { useCurrentUser } from "@/lib/useCurrentUser";
+import { useCurrentUser, getDisplayName } from "@/lib/useCurrentUser";
 import UserAvatar from "@/components/UserAvatar";
 
 export default function TopBar() {
@@ -44,7 +44,7 @@ export default function TopBar() {
           }`}
         >
           <UserAvatar user={user} size={22} className={accountActive ? "ring-2 ring-white/50" : ""} />
-          Account
+          {getDisplayName(user)}
         </Link>
       </div>
     </header>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ShareModal from "@/components/ShareModal";
+import { getItemIcon } from "@/lib/itemIcons";
 import type { ShoppingList } from "@/lib/types";
 
 export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner: boolean }) {
@@ -31,7 +32,7 @@ export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner
     <li className="flex items-center gap-2 rounded-xl bg-white px-4 py-3.5 shadow-sm">
       <Link href={`/lists/${list.id}`} className="min-w-0 flex-1">
         <span className="font-hand block truncate text-lg text-gray-900">
-          <span className="mr-1">🛒</span>
+          <span className="mr-1">{getItemIcon(list.name)}</span>
           {list.name}
         </span>
       </Link>

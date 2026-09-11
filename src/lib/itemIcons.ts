@@ -213,3 +213,12 @@ export function getItemIcon(name: string): string {
   }
   return "🛒";
 }
+
+// Same lookup, but for titles (list/recipe names) where the generic cart
+// fallback isn't appropriate — e.g. a recipe called "Chicken Curry" should
+// show 🍗, but a recipe with no recognizable keyword should fall back to a
+// kind-appropriate icon (🍽️/🍸) instead of a shopping cart.
+export function getTitleIcon(name: string, fallback: string): string {
+  const icon = getItemIcon(name);
+  return icon === "🛒" ? fallback : icon;
+}

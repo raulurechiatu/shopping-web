@@ -48,3 +48,13 @@ export function getInitials(user: CurrentUser | null): string {
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[1][0]).toUpperCase();
 }
+
+// Shown in nav in place of the static "Account" label once we know who's
+// signed in.
+export function getDisplayName(user: CurrentUser | null): string {
+  if (!user) return "Account";
+  if (user.isAnonymous) return "Guest";
+  if (user.fullName) return user.fullName.split(/\s+/)[0];
+  if (user.email) return user.email.split("@")[0];
+  return "Account";
+}

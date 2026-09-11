@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { getItemIcon } from "@/lib/itemIcons";
+import { getItemIcon, getTitleIcon } from "@/lib/itemIcons";
 import AddRecipeToListModal from "@/components/AddRecipeToListModal";
 import ShareModal from "@/components/ShareModal";
 import type { Recipe, RecipeIngredient, ShoppingList } from "@/lib/types";
@@ -32,6 +32,7 @@ export default function RecipeDetail({
   const backHref = isCocktail ? "/recipes/cocktails" : "/recipes";
   const backLabel = isCocktail ? "Cocktails" : "Recipes";
   const noun = isCocktail ? "cocktail" : "recipe";
+  const titleIcon = getTitleIcon(recipe.name, isCocktail ? "🍸" : "🍽️");
 
   const steps = (recipe.instructions ?? "")
     .split("\n")
@@ -69,7 +70,7 @@ export default function RecipeDetail({
             {backLabel}
           </Link>
           <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">
-            <span className="mr-1">{isCocktail ? "🍸" : "🍽️"}</span>
+            <span className="mr-1">{titleIcon}</span>
             {recipe.name}
           </h1>
           {!isOwner && <p className="mt-1 text-xs text-gray-400">Shared with you — view only</p>}

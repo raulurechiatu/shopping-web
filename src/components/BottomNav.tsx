@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_TABS } from "@/components/navTabs";
-import { useCurrentUser } from "@/lib/useCurrentUser";
+import { useCurrentUser, getDisplayName } from "@/lib/useCurrentUser";
 import UserAvatar from "@/components/UserAvatar";
 
 export default function BottomNav() {
@@ -32,7 +32,9 @@ export default function BottomNav() {
               ) : (
                 tab.icon(active)
               )}
-              <span className={`text-[11px] ${active ? "font-medium" : ""}`}>{tab.label}</span>
+              <span className={`text-[11px] ${active ? "font-medium" : ""}`}>
+                {isAccount ? getDisplayName(user) : tab.label}
+              </span>
             </Link>
           );
         })}

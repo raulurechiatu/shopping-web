@@ -262,7 +262,7 @@ export default function ShoppingListView({
             Your Lists
           </Link>
           <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900">
-            <span className="mr-1">🛒</span>
+            <span className="mr-1">{getItemIcon(list.name)}</span>
             {list.name}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
