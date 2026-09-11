@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
+import { CATEGORY_ORDER, getItemCategory, type CategoryId } from "@/lib/itemCategories";
 import ShareModal from "@/components/ShareModal";
 import { useDialog } from "@/lib/DialogProvider";
 import type { CatalogItem, ShoppingItem, ShoppingList } from "@/lib/types";
@@ -28,6 +29,7 @@ export default function ShoppingListView({
   const [catalog, setCatalog] = useState<CatalogItem[]>(initialCatalog);
   const [newItem, setNewItem] = useState("");
   const [newQuantity, setNewQuantity] = useState("");
+  const [newCategory, setNewCategory] = useState<CategoryId | "">("");
   const [showInvite, setShowInvite] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -133,21 +135,24 @@ export default function ShoppingListView({
       .slice(0, query ? 6 : 12);
   }, [catalog, pendingNames, newItem]);
 
-  async function addItemByName(rawName: string, rawQuantity?: string) {
+  async function addItemByName(rawName: string, rawQuantity?: string, rawCategory?: CategoryId | null) {
     const name = rawName.trim();
     if (!name || isAdding) return;
     // Someone's already shopping for this — don't create a second row.
     if (pendingNames.has(name.toLowerCase())) {
       setNewItem("");
       setNewQuantity("");
+      setNewCategory("");
       return;
     }
 
     const quantity = rawQuantity?.trim() || null;
+    const category = rawCategory || getItemCategory(name);
 
     setIsAdding(true);
     setNewItem("");
     setNewQuantity("");
+    setNewCategory("");
     inputRef.current?.focus();
 
     const supabase = createClient();
@@ -165,12 +170,13 @@ export default function ShoppingListView({
       added_by: user?.id ?? null,
       created_at: new Date().toISOString(),
       checked_at: null,
+      category,
     };
     setItems((current) => [...current, optimisticItem]);
 
     const { data, error } = await supabase
       .from("list_items")
-      .insert({ list_id: list.id, name, quantity, added_by: user?.id ?? null })
+      .insert({ list_id: list.id, name, quantity, category, added_by: user?.id ?? null })
       .select()
       .single();
 
@@ -200,7 +206,7 @@ export default function ShoppingListView({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await addItemByName(newItem, newQuantity);
+    await addItemByName(newItem, newQuantity, newCategory || null);
   }
 
   async function toggleItem(item: ShoppingItem) {
@@ -245,6 +251,19 @@ export default function ShoppingListView({
   const checked = items
     .filter((i) => i.is_checked)
     .sort((a, b) => (b.checked_at ?? "").localeCompare(a.checked_at ?? ""));
+
+  const pendingByCategory = (() => {
+    const groups = new Map<CategoryId, ShoppingItem[]>();
+    for (const item of pending) {
+      const cat = (item.category as CategoryId | null) || getItemCategory(item.name);
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat)!.push(item);
+    }
+    return CATEGORY_ORDER.filter((c) => groups.has(c.id)).map((c) => ({
+      ...c,
+      items: groups.get(c.id)!,
+    }));
+  })();
 
   return (
     <div className="min-h-screen bg-[#f7f6f3] dark:bg-[#14171c] px-0 py-0 sm:px-6 sm:py-10">
@@ -321,6 +340,29 @@ export default function ShoppingListView({
             </button>
           </form>
 
+          {newItem.trim() &&
+            (() => {
+              const detected = CATEGORY_ORDER.find((c) => c.id === getItemCategory(newItem))!;
+              return (
+                <div className="mb-3 flex items-center gap-1.5">
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value as CategoryId | "")}
+                    className="font-hand rounded-full border border-dashed border-gray-300 dark:border-gray-700 bg-transparent px-2.5 py-1 text-xs text-gray-500 dark:text-gray-400 focus:border-[var(--accent-food)] focus:outline-none"
+                  >
+                    <option value="">
+                      Auto: {detected.icon} {detected.label}
+                    </option>
+                    {CATEGORY_ORDER.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.icon} {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })()}
+
           {suggestions.length > 0 && (
             <div className="mb-6">
               {!newItem.trim() && (
@@ -332,7 +374,7 @@ export default function ShoppingListView({
                 {suggestions.map((c) => (
                   <button
                     key={c.id}
-                    onClick={() => addItemByName(c.name)}
+                    onClick={() => addItemByName(c.name, undefined, c.category as CategoryId | null)}
                     className="font-hand flex shrink-0 touch-manipulation items-center gap-1.5 rounded-full border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-base text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 sm:shrink"
                   >
                     <span>{getItemIcon(c.name)}</span>
@@ -349,11 +391,22 @@ export default function ShoppingListView({
             </p>
           )}
 
-          <ul className="flex flex-wrap gap-2">
-            {pending.map((item) => (
-              <ItemChip key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+          <div className="space-y-4">
+            {pendingByCategory.map((group) => (
+              <div key={group.id}>
+                {pendingByCategory.length > 1 && (
+                  <p className="mb-1.5 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
+                    {group.icon} {group.label}
+                  </p>
+                )}
+                <ul className="flex flex-wrap gap-2">
+                  {group.items.map((item) => (
+                    <ItemChip key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
 
           {checked.length > 0 && (
             <div className="mt-6">

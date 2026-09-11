@@ -15,6 +15,7 @@ export type ShoppingItem = {
   added_by: string | null;
   created_at: string;
   checked_at: string | null;
+  category: string | null;
 };
 
 export type CatalogItem = {
@@ -23,6 +24,7 @@ export type CatalogItem = {
   name: string;
   use_count: number;
   last_used_at: string;
+  category: string | null;
 };
 
 export type RecipeKind = "food" | "cocktail";
