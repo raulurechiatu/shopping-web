@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
@@ -47,7 +47,6 @@ export default function ShoppingListView({
   const [showFavorites, setShowFavorites] = useState(false);
   const [showBought, setShowBought] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [showCategoryLabels, setShowCategoryLabels] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -520,41 +519,33 @@ export default function ShoppingListView({
           )}
 
           {pending.length > 0 && (
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-                🛒 {pending.length} item{pending.length === 1 ? "" : "s"} to buy
-              </p>
-              {pendingByCategory.length > 1 && (
-                <button
-                  onClick={() => setShowCategoryLabels((v) => !v)}
-                  className="touch-manipulation text-xs font-medium text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-                >
-                  {showCategoryLabels ? "Hide categories" : "🏷️ Show categories"}
-                </button>
-              )}
-            </div>
+            <p className="mb-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
+              🛒 {pending.length} item{pending.length === 1 ? "" : "s"} to buy
+            </p>
           )}
 
-          <ul className="flex flex-wrap items-center gap-2.5">
+          <div className="space-y-4">
             {pendingByCategory.map((group) => (
-              <Fragment key={group.id}>
-                {showCategoryLabels && pendingByCategory.length > 1 && (
-                  <li className="shrink-0 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
+              <div key={group.id}>
+                {pendingByCategory.length > 1 && (
+                  <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
                     {group.icon} {group.label}
-                  </li>
+                  </p>
                 )}
-                {group.items.map((item) => (
-                  <ItemChip
-                    key={item.id}
-                    item={item}
-                    onToggle={toggleItem}
-                    onDelete={deleteItem}
-                    isMatch={item.id === existingPendingMatch?.id}
-                  />
-                ))}
-              </Fragment>
+                <ul className="flex flex-wrap gap-2.5">
+                  {group.items.map((item) => (
+                    <ItemChip
+                      key={item.id}
+                      item={item}
+                      onToggle={toggleItem}
+                      onDelete={deleteItem}
+                      isMatch={item.id === existingPendingMatch?.id}
+                    />
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
 
           {checked.length > 0 && (
             <div className="mt-8 border-t border-gray-100 pt-4 dark:border-gray-800">
