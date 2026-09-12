@@ -53,6 +53,10 @@ export default function ShoppingListView({
   const [showCategoryLabels, setShowCategoryLabels] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [listName, setListName] = useState(list.name);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(list.name);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -339,6 +343,29 @@ export default function ShoppingListView({
     }
   }
 
+  function startEditingName() {
+    if (!isOwner) return;
+    setNameDraft(listName);
+    setEditingName(true);
+  }
+
+  async function saveName() {
+    const trimmed = nameDraft.trim();
+    setEditingName(false);
+    if (!trimmed || trimmed === listName) return;
+    if (!(await requireOnline())) return;
+
+    const previousName = listName;
+    setListName(trimmed);
+
+    const supabase = createClient();
+    const { error } = await supabase.from("lists").update({ name: trimmed }).eq("id", list.id);
+    if (error) {
+      setListName(previousName);
+      showToast(error.message, "⚠️");
+    }
+  }
+
   function itemCategoryOf(item: ShoppingItem): CategoryId {
     return (item.category as CategoryId | null) || getItemCategory(item.name);
   }
@@ -397,15 +424,49 @@ export default function ShoppingListView({
             </svg>
             Your Lists
           </Link>
-          <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900 dark:text-gray-100">
-            <span className="mr-1">{getItemIcon(list.name)}</span>
-            {list.name}
-            {sharedWithHousehold && (
-              <span className="ml-1.5 inline-block align-middle text-2xl" title="Shared with your household">
-                🏠
-              </span>
-            )}
-          </h1>
+          {editingName ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                saveName();
+              }}
+              className="flex items-center gap-1"
+            >
+              <span className="text-2xl">{getItemIcon(listName)}</span>
+              <input
+                ref={nameInputRef}
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={saveName}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setEditingName(false);
+                }}
+                className="font-script min-w-0 flex-1 rounded border-b-2 border-[var(--accent-food)] bg-transparent text-3xl font-bold text-gray-900 focus:outline-none dark:text-gray-100"
+              />
+            </form>
+          ) : (
+            <h1
+              onClick={startEditingName}
+              className={`-rotate-1 font-script text-3xl font-bold text-gray-900 dark:text-gray-100 ${
+                isOwner ? "touch-manipulation cursor-pointer hover:opacity-80" : ""
+              }`}
+              title={isOwner ? "Tap to rename" : undefined}
+            >
+              <span className="mr-1">{getItemIcon(listName)}</span>
+              {listName}
+              {isOwner && (
+                <svg viewBox="0 0 20 20" fill="currentColor" className="ml-1 inline-block h-4 w-4 align-middle text-gray-300 dark:text-gray-600">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-8.5 8.5a2 2 0 01-.883.507l-3 .857a.5.5 0 01-.618-.618l.857-3a2 2 0 01.507-.883l8.5-8.5z" />
+                </svg>
+              )}
+              {sharedWithHousehold && (
+                <span className="ml-1.5 inline-block align-middle text-2xl" title="Shared with your household">
+                  🏠
+                </span>
+              )}
+            </h1>
+          )}
           {!isOwner && ownerName && (
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Created by {ownerName}</p>
           )}
@@ -553,7 +614,7 @@ export default function ShoppingListView({
                       {group.icon} {group.label}
                     </p>
                   )}
-                  <ul className="flex flex-wrap gap-2.5">
+                  <ul className="flex flex-wrap gap-2">
                     {group.items.map((item) => (
                       <ItemChip
                         key={item.id}
@@ -568,7 +629,7 @@ export default function ShoppingListView({
               ))}
             </div>
           ) : (
-            <ul className="flex flex-wrap gap-2.5">
+            <ul className="flex flex-wrap gap-2">
               {pendingByCategory.flatMap((group) => group.items).map((item) => (
                 <ItemChip
                   key={item.id}
@@ -604,13 +665,13 @@ export default function ShoppingListView({
 
       {showInvite && (
         <ShareModal
-          title={`Invite to "${list.name}"`}
+          title={`Invite to "${listName}"`}
           description="Share a link or code so others can join your list."
           code={list.invite_code}
           joinPath={`/join/${list.invite_code}`}
-          mailSubject={`Join my shopping list "${list.name}"`}
+          mailSubject={`Join my shopping list "${listName}"`}
           shareText={(joinUrl) =>
-            `Join my shopping list "${list.name}" so we can shop together.\n\nOpen this link to join instantly: ${joinUrl}\n\nOr enter this invite code in the app: ${list.invite_code}`
+            `Join my shopping list "${listName}" so we can shop together.\n\nOpen this link to join instantly: ${joinUrl}\n\nOr enter this invite code in the app: ${list.invite_code}`
           }
           onClose={() => setShowInvite(false)}
           onShareWithHousehold={async () => {
@@ -651,16 +712,16 @@ function ItemChip({
         type="button"
         onClick={() => onToggle(item)}
         className={`flex touch-manipulation items-center gap-1.5 text-left ${
-          small ? "py-1 pr-1 pl-2" : "py-2 pr-1 pl-3"
+          small ? "py-1 pr-1 pl-2" : "py-1.5 pr-1 pl-2.5"
         }`}
       >
         <span
           className={`flex shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-            small ? "h-3.5 w-3.5" : "h-5 w-5"
+            small ? "h-3.5 w-3.5" : "h-[18px] w-[18px]"
           } ${item.is_checked ? "border-[#2b3a55] bg-[#2b3a55]" : "border-gray-400 bg-white dark:bg-gray-900"}`}
         >
           {item.is_checked && (
-            <svg viewBox="0 0 16 16" fill="none" className={small ? "h-2 w-2" : "h-3 w-3"}>
+            <svg viewBox="0 0 16 16" fill="none" className={small ? "h-2 w-2" : "h-2.5 w-2.5"}>
               <path
                 d="M3 8.5L6.5 12L13 4.5"
                 stroke="white"
@@ -671,9 +732,9 @@ function ItemChip({
             </svg>
           )}
         </span>
-        <span className={`shrink-0 leading-none ${small ? "text-sm" : "text-xl"}`}>{getItemIcon(item.name)}</span>
+        <span className={`shrink-0 leading-none ${small ? "text-sm" : "text-lg"}`}>{getItemIcon(item.name)}</span>
         <span
-          className={`font-hand whitespace-nowrap ${small ? "text-sm" : "text-lg"} ${
+          className={`font-hand whitespace-nowrap ${small ? "text-sm" : "text-base"} ${
             item.is_checked
               ? "text-gray-400 dark:text-gray-500 line-through decoration-red-500 decoration-2"
               : "text-gray-900 dark:text-gray-100"
@@ -690,7 +751,7 @@ function ItemChip({
       <button
         onClick={() => onDelete(item)}
         className={`shrink-0 touch-manipulation rounded-full text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-500 ${
-          small ? "p-1 text-xs" : "p-2"
+          small ? "p-1 text-xs" : "p-1.5 text-sm"
         }`}
         aria-label="Delete item"
       >

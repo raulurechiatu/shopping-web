@@ -43,6 +43,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
               name: ing.name,
               quantity: ing.quantity ?? "",
             }))}
+            initialImageUrl={recipe.image_url ?? ""}
           />
         </div>
       </div>

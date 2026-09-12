@@ -57,6 +57,7 @@ export type Recipe = {
   instructions: string | null;
   invite_code: string;
   kind: RecipeKind;
+  image_url: string | null;
   created_at: string;
   updated_at: string;
 };

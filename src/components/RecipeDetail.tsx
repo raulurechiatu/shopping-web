@@ -139,6 +139,15 @@ export default function RecipeDetail({
         </header>
 
         <main className="px-5 py-5 pl-16 sm:pl-20">
+          {recipe.image_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={recipe.image_url}
+              alt=""
+              className="mb-4 h-48 w-full rounded-xl bg-gray-100 object-contain dark:bg-gray-800"
+            />
+          )}
+
           <div className="mb-2 flex items-center justify-between">
             <p className="text-xs font-medium tracking-wide text-gray-400 dark:text-gray-500 uppercase">
               Ingredients

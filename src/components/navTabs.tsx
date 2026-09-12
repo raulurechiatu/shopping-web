@@ -4,21 +4,14 @@ export const NAV_TABS = [
     label: "Shopping",
     icon: (active: boolean) => (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <rect
-          x="4"
-          y="4"
-          width="16"
-          height="16"
-          rx="2"
-          stroke="currentColor"
-          strokeWidth={active ? 2 : 1.5}
-        />
         <path
-          d="M8 9h8M8 12.5h8M8 16h5"
+          d="M3.5 4h2l.9 2M6.4 6h14.1l-1.8 7.5a1.5 1.5 0 01-1.46 1.15H8.85a1.5 1.5 0 01-1.46-1.15L6.4 6z"
           stroke="currentColor"
           strokeWidth={active ? 2 : 1.5}
-          strokeLinecap="round"
+          strokeLinejoin="round"
         />
+        <circle cx="10" cy="20" r="1.4" stroke="currentColor" strokeWidth={active ? 2 : 1.5} />
+        <circle cx="18" cy="20" r="1.4" stroke="currentColor" strokeWidth={active ? 2 : 1.5} />
       </svg>
     ),
   },
