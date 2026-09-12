@@ -11,20 +11,24 @@ import ShareModal from "@/components/ShareModal";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import { useToast } from "@/lib/ToastProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
-import type { ShoppingItem, ShoppingList, UserItem } from "@/lib/types";
+import type { ShoppingItem, ShoppingList, HouseholdItem } from "@/lib/types";
 
 export default function ShoppingListView({
   list,
   initialItems,
   initialFavorites,
+  householdId,
   isOwner,
   ownerName,
+  sharedWithHousehold,
 }: {
   list: ShoppingList;
   initialItems: ShoppingItem[];
-  initialFavorites: UserItem[];
+  initialFavorites: HouseholdItem[];
+  householdId: string | null;
   isOwner: boolean;
   ownerName?: string | null;
+  sharedWithHousehold?: boolean;
 }) {
   const { showToast } = useToast();
   const requireOnline = useOnlineGuard();
@@ -43,7 +47,7 @@ export default function ShoppingListView({
   const [showScanner, setShowScanner] = useState(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "looking-up">("idle");
   const [viewerNames, setViewerNames] = useState<string[]>([]);
-  const [favorites, setFavorites] = useState<UserItem[]>(initialFavorites);
+  const [favorites, setFavorites] = useState<HouseholdItem[]>(initialFavorites);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showBought, setShowBought] = useState(false);
   const [showCategoryLabels, setShowCategoryLabels] = useState(false);
@@ -132,23 +136,23 @@ export default function ShoppingListView({
         )
         .subscribe();
 
-      // Keeps the favorites sheet in sync with changes made on the Items
-      // screen (or from the sheet in another tab) — guests don't have a
-      // personal item registry, so skip subscribing for them.
-      if (!session?.user?.is_anonymous) {
+      // Keeps the favorites row in sync with changes made on the Items
+      // screen (or by another household member) — only relevant once
+      // there's a household to draw favorites from.
+      if (householdId) {
         favoritesChannel = supabase
-          .channel(`user_items_favorites:${session?.user?.id}`)
+          .channel(`household_items_favorites:${householdId}`)
           .on(
             "postgres_changes",
-            { event: "*", schema: "public", table: "user_items", filter: `owner_id=eq.${session?.user?.id}` },
+            { event: "*", schema: "public", table: "household_items", filter: `household_id=eq.${householdId}` },
             (payload) => {
               setFavorites((current) => {
                 if (payload.eventType === "DELETE") {
-                  const removedId = (payload.old as Partial<UserItem>)?.id;
+                  const removedId = (payload.old as Partial<HouseholdItem>)?.id;
                   if (!removedId) return current;
                   return current.filter((c) => c.id !== removedId);
                 }
-                const incoming = payload.new as UserItem | undefined;
+                const incoming = payload.new as HouseholdItem | undefined;
                 if (!incoming?.id) return current;
                 const withoutIncoming = current.filter((c) => c.id !== incoming.id);
                 if (!incoming.is_favorite) return withoutIncoming;
@@ -199,7 +203,7 @@ export default function ShoppingListView({
       if (favoritesChannel) supabase.removeChannel(favoritesChannel);
       if (presenceChannel) supabase.removeChannel(presenceChannel);
     };
-  }, [list.id]);
+  }, [list.id, householdId]);
 
   async function addItemByName(rawName: string, rawQuantity?: string, rawCategory?: CategoryId | null) {
     const name = rawName.trim();
@@ -396,6 +400,11 @@ export default function ShoppingListView({
           <h1 className="-rotate-1 font-script text-3xl font-bold text-gray-900 dark:text-gray-100">
             <span className="mr-1">{getItemIcon(list.name)}</span>
             {list.name}
+            {sharedWithHousehold && (
+              <span className="ml-1.5 inline-block align-middle text-2xl" title="Shared with your household">
+                🏠
+              </span>
+            )}
           </h1>
           {!isOwner && ownerName && (
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Created by {ownerName}</p>
@@ -696,9 +705,9 @@ function FavoritesRow({
   pendingNames,
   onAdd,
 }: {
-  favorites: UserItem[];
+  favorites: HouseholdItem[];
   pendingNames: Set<string>;
-  onAdd: (favorite: UserItem) => void;
+  onAdd: (favorite: HouseholdItem) => void;
 }) {
   return (
     <div className="mb-4">

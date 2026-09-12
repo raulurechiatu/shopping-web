@@ -7,6 +7,7 @@ import type { ShoppingList } from "@/lib/types";
 
 type ListWithItems = ShoppingList & {
   items: { name: string; quantity: string | null; category: string | null }[];
+  sharedWithHousehold: boolean;
 };
 
 export default function ListsGrid({
@@ -46,7 +47,12 @@ export default function ListsGrid({
       {filtered.length > 0 && (
         <ul className="w-full space-y-2">
           {filtered.map((list) => (
-            <ListRow key={list.id} list={list} isOwner={list.owner_id === currentUserId} />
+            <ListRow
+              key={list.id}
+              list={list}
+              isOwner={list.owner_id === currentUserId}
+              sharedWithHousehold={list.sharedWithHousehold}
+            />
           ))}
         </ul>
       )}

@@ -10,7 +10,15 @@ import { useDialog } from "@/lib/DialogProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import type { ShoppingList } from "@/lib/types";
 
-export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner: boolean }) {
+export default function ListRow({
+  list,
+  isOwner,
+  sharedWithHousehold,
+}: {
+  list: ShoppingList;
+  isOwner: boolean;
+  sharedWithHousehold?: boolean;
+}) {
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
   const requireOnline = useOnlineGuard();
@@ -48,6 +56,14 @@ export default function ListRow({ list, isOwner }: { list: ShoppingList; isOwner
         <span className="font-hand block truncate text-lg text-gray-900 dark:text-gray-100">
           <span className="mr-1">{getItemIcon(list.name)}</span>
           {list.name}
+          {sharedWithHousehold && (
+            <span
+              className="ml-1.5 inline-block align-middle text-sm"
+              title="Shared with your household"
+            >
+              🏠
+            </span>
+          )}
         </span>
       </Link>
       <button

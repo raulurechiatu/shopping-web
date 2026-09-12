@@ -3,17 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { expandSynonyms, termMatches } from "@/lib/ingredientSynonyms";
 import type { RecipeIngredient, ShoppingList } from "@/lib/types";
 
 export default function AddRecipeToListModal({
   recipeName,
   ingredients,
   userLists,
+  pantryItemNames,
   onClose,
 }: {
   recipeName: string;
   ingredients: RecipeIngredient[];
   userLists: ShoppingList[];
+  pantryItemNames: string[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -23,10 +26,31 @@ export default function AddRecipeToListModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // An ingredient already in the household pantry starts unchecked — you
+  // probably don't need to buy what you already have. Matched the same
+  // way "What can I make?" matches pantry items against recipe
+  // ingredients, EN/RO synonyms included.
+  const pantrySynonyms = pantryItemNames.flatMap((name) => expandSynonyms(name));
+  const alreadyHave = (ingredientName: string) => pantrySynonyms.some((s) => termMatches(ingredientName, s));
+
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(
+    () => new Set(ingredients.filter((ing) => !alreadyHave(ing.name)).map((ing) => ing.id)),
+  );
+
+  function toggleIngredient(id: string) {
+    setCheckedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (ingredients.length === 0) {
-      setError("This recipe has no ingredients yet.");
+    const selected = ingredients.filter((ing) => checkedIds.has(ing.id));
+    if (selected.length === 0) {
+      setError("Pick at least one ingredient to add.");
       return;
     }
 
@@ -69,7 +93,7 @@ export default function AddRecipeToListModal({
       .eq("is_checked", false);
 
     const existingNames = new Set((existingItems ?? []).map((i) => i.name.toLowerCase()));
-    const toInsert = ingredients.filter((ing) => !existingNames.has(ing.name.toLowerCase()));
+    const toInsert = selected.filter((ing) => !existingNames.has(ing.name.toLowerCase()));
 
     if (toInsert.length > 0) {
       const { error: insertError } = await supabase.from("list_items").insert(
@@ -144,6 +168,38 @@ export default function AddRecipeToListModal({
               placeholder="List name"
               className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm focus:border-[var(--accent-food)] focus:outline-none"
             />
+          )}
+
+          {ingredients.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-xs font-medium tracking-wide text-gray-400 uppercase dark:text-gray-500">
+                Ingredients
+              </p>
+              <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-gray-200 p-2 dark:border-gray-700">
+                {ingredients.map((ing) => {
+                  const have = alreadyHave(ing.name);
+                  return (
+                    <li key={ing.id}>
+                      <label className="flex touch-manipulation items-center gap-2 rounded px-1 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <input
+                          type="checkbox"
+                          checked={checkedIds.has(ing.id)}
+                          onChange={() => toggleIngredient(ing.id)}
+                          className="h-4 w-4 shrink-0 rounded border-gray-300 dark:border-gray-700"
+                        />
+                        <span className={`flex-1 ${have ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-gray-100"}`}>
+                          {ing.name}
+                          {ing.quantity && <span className="text-xs"> ({ing.quantity})</span>}
+                        </span>
+                        {have && (
+                          <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">already have</span>
+                        )}
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}

@@ -24,31 +24,48 @@ export default async function ListPage({ params }: { params: Promise<{ id: strin
 
   const isOwner = list.owner_id === user.id;
 
-  const [{ data: items }, { data: favorites }, { data: ownerProfile }] = await Promise.all([
-    supabase
-      .from("list_items")
-      .select("*")
-      .eq("list_id", list.id)
-      .order("created_at", { ascending: true }),
-    user.is_anonymous
-      ? Promise.resolve({ data: [] }) // guests don't get the personal favorites/pantry feature
-      : supabase
-          .from("user_items")
-          .select("*")
-          .eq("is_favorite", true)
-          .order("name", { ascending: true }),
-    isOwner
-      ? Promise.resolve({ data: null })
-      : supabase.from("profiles").select("full_name").eq("id", list.owner_id).maybeSingle(),
-  ]);
+  const { data: membership } = user.is_anonymous
+    ? { data: null } // guests don't get the household pantry/favorites feature
+    : await supabase.from("household_members").select("household_id").eq("user_id", user.id).maybeSingle();
+
+  const [{ data: items }, { data: favorites }, { data: ownerProfile }, { data: listMembers }, { data: householdMembers }] =
+    await Promise.all([
+      supabase
+        .from("list_items")
+        .select("*")
+        .eq("list_id", list.id)
+        .order("created_at", { ascending: true }),
+      membership
+        ? supabase
+            .from("household_items")
+            .select("*")
+            .eq("household_id", membership.household_id)
+            .eq("is_favorite", true)
+            .order("name", { ascending: true })
+        : Promise.resolve({ data: [] }),
+      isOwner
+        ? Promise.resolve({ data: null })
+        : supabase.from("profiles").select("full_name").eq("id", list.owner_id).maybeSingle(),
+      supabase.from("list_members").select("user_id").eq("list_id", list.id),
+      membership
+        ? supabase.from("household_members").select("user_id").eq("household_id", membership.household_id)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+  const listMemberIds = new Set((listMembers ?? []).map((m) => m.user_id));
+  const householdMemberIds = (householdMembers ?? []).map((m) => m.user_id);
+  const sharedWithHousehold =
+    householdMemberIds.length > 1 && householdMemberIds.every((id) => listMemberIds.has(id));
 
   return (
     <ShoppingListView
       list={list}
       initialItems={items ?? []}
       initialFavorites={favorites ?? []}
+      householdId={membership?.household_id ?? null}
       isOwner={isOwner}
       ownerName={ownerProfile?.full_name ?? null}
+      sharedWithHousehold={sharedWithHousehold}
     />
   );
 }

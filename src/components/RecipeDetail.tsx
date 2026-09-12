@@ -23,6 +23,7 @@ export default function RecipeDetail({
   isOwner,
   ownerName,
   preferredUnits,
+  pantryItemNames,
 }: {
   recipe: Recipe;
   ingredients: RecipeIngredient[];
@@ -30,6 +31,7 @@ export default function RecipeDetail({
   isOwner: boolean;
   ownerName?: string | null;
   preferredUnits?: UnitSystem | null;
+  pantryItemNames?: string[];
 }) {
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
@@ -202,6 +204,7 @@ export default function RecipeDetail({
           recipeName={recipe.name}
           ingredients={scaledIngredients}
           userLists={userLists}
+          pantryItemNames={pantryItemNames ?? []}
           onClose={() => setShowAddToList(false)}
         />
       )}

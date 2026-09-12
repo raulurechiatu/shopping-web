@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
-export default function CreateOrJoinList() {
+export default function CreateOrJoinList({ hasHousehold = false }: { hasHousehold?: boolean }) {
   const router = useRouter();
   const requireOnline = useOnlineGuard();
   const currentUser = useCurrentUser();
@@ -18,6 +18,7 @@ export default function CreateOrJoinList() {
 
   const [name, setName] = useState("My Shopping List");
   const [code, setCode] = useState("");
+  const [shareWithHousehold, setShareWithHousehold] = useState(hasHousehold);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,13 +34,17 @@ export default function CreateOrJoinList() {
         ? await supabase.rpc("create_list", { list_name: name })
         : await supabase.rpc("join_list_by_code", { code: code.trim() });
 
-    setLoading(false);
-
     if (error) {
+      setLoading(false);
       setError(error.message);
       return;
     }
 
+    if (mode === "create" && shareWithHousehold) {
+      await supabase.rpc("share_list_with_household", { target_list_id: data.id });
+    }
+
+    setLoading(false);
     router.push(`/lists/${data.id}`);
   }
 
@@ -66,13 +71,26 @@ export default function CreateOrJoinList() {
 
       <form onSubmit={handleSubmit} className="space-y-3">
         {mode === "create" ? (
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="List name"
-            required
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm focus:border-[var(--accent-food)] focus:outline-none"
-          />
+          <>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="List name"
+              required
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm focus:border-[var(--accent-food)] focus:outline-none"
+            />
+            {hasHousehold && (
+              <label className="flex touch-manipulation items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={shareWithHousehold}
+                  onChange={(e) => setShareWithHousehold(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-700"
+                />
+                🏠 Share with household automatically
+              </label>
+            )}
+          </>
         ) : (
           <input
             value={code}

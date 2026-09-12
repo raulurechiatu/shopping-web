@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useDialog } from "@/lib/DialogProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import ShareModal from "@/components/ShareModal";
 import type { Household } from "@/lib/types";
@@ -19,6 +20,7 @@ export default function HouseholdSection({
   currentUserId: string;
 }) {
   const router = useRouter();
+  const { confirmDialog, alertDialog } = useDialog();
   const requireOnline = useOnlineGuard();
   const [mode, setMode] = useState<"create" | "join">("create");
   const [code, setCode] = useState("");
@@ -26,6 +28,49 @@ export default function HouseholdSection({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
+  const [busyMemberId, setBusyMemberId] = useState<string | null>(null);
+  const isOwner = household?.owner_id === currentUserId;
+
+  async function leaveHousehold() {
+    if (!household) return;
+    const isSoleMember = members.length === 1;
+    const ok = await confirmDialog(
+      isSoleMember
+        ? `Leave "${household.name}"? You'll lose access to its shared pantry and recipes.`
+        : `Leave "${household.name}"? You'll lose access to its shared pantry and recipes — the rest of the household keeps them.`,
+    );
+    if (!ok) return;
+    if (!(await requireOnline())) return;
+
+    setBusyMemberId(currentUserId);
+    const supabase = createClient();
+    const { error } = await supabase.from("household_members").delete().eq("user_id", currentUserId);
+    setBusyMemberId(null);
+    if (error) {
+      await alertDialog(error.message);
+      return;
+    }
+    router.refresh();
+  }
+
+  async function removeMember(member: Member) {
+    if (!household) return;
+    const ok = await confirmDialog(
+      `Remove ${member.full_name ?? "this person"} from "${household.name}"? They'll lose access to its shared pantry and recipes.`,
+    );
+    if (!ok) return;
+    if (!(await requireOnline())) return;
+
+    setBusyMemberId(member.id);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("remove_household_member", { target_user_id: member.id });
+    setBusyMemberId(null);
+    if (error) {
+      await alertDialog(error.message);
+      return;
+    }
+    router.refresh();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -66,12 +111,22 @@ export default function HouseholdSection({
           {members.map((m) => (
             <span
               key={m.id}
-              className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+              className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 py-1 pr-2.5 pl-1 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
             >
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2b3a55] text-[10px] font-medium text-white">
                 {(m.full_name || "?").slice(0, 1).toUpperCase()}
               </span>
               {m.id === currentUserId ? "You" : (m.full_name ?? "Member")}
+              {isOwner && m.id !== currentUserId && (
+                <button
+                  onClick={() => removeMember(m)}
+                  disabled={busyMemberId === m.id}
+                  aria-label={`Remove ${m.full_name ?? "member"}`}
+                  className="touch-manipulation text-gray-400 hover:text-red-500 disabled:opacity-50 dark:text-gray-500"
+                >
+                  ✕
+                </button>
+              )}
             </span>
           ))}
         </div>
@@ -102,6 +157,13 @@ export default function HouseholdSection({
           <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
             Anyone who joins shares your pantry and recipes.
           </p>
+          <button
+            onClick={leaveHousehold}
+            disabled={busyMemberId === currentUserId}
+            className="mt-3 touch-manipulation text-xs font-medium text-gray-400 hover:text-red-500 disabled:opacity-50 dark:text-gray-500"
+          >
+            Leave household
+          </button>
         </div>
 
         {showInvite && (
@@ -168,7 +230,8 @@ export default function HouseholdSection({
         {error && <p className="text-sm text-red-600">{error}</p>}
       </form>
       <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-        Share your pantry and recipes with someone — your favorites stay just yours.
+        Shares your pantry, favorites, and recipes with whoever joins — shopping lists stay separate
+        unless you share one from its own Invite screen.
       </p>
     </div>
   );

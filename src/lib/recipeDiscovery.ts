@@ -89,6 +89,33 @@ const LETTERS = "abcdefghijklmnopqrstuvwxyz".split("");
 let mealCatalogCache: Promise<DiscoveredRecipe[]> | null = null;
 let cocktailCatalogCache: Promise<DiscoveredRecipe[]> | null = null;
 
+// Persists the catalog across page loads/sessions (not just this tab's
+// lifetime) so a repeat visit doesn't re-pay for 26 requests. Wrapped in
+// try/catch throughout since localStorage can throw (quota, private
+// browsing, disabled) — falling back to the in-memory cache is fine.
+const CATALOG_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function readCatalogLocalCache(key: string): DiscoveredRecipe[] | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { savedAt: number; data: DiscoveredRecipe[] };
+    if (!parsed?.savedAt || Date.now() - parsed.savedAt > CATALOG_CACHE_TTL_MS) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function writeCatalogLocalCache(key: string, data: DiscoveredRecipe[]) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), data }));
+  } catch {
+    // Quota exceeded or storage unavailable — the in-memory cache still
+    // covers the rest of this session.
+  }
+}
+
 async function fetchCatalogLetter(
   url: string,
   letter: string,
@@ -111,22 +138,39 @@ async function fetchCatalogLetter(
   }
 }
 
+const MEAL_CACHE_KEY = "catalog-cache:meals";
+const COCKTAIL_CACHE_KEY = "catalog-cache:cocktails";
+
 async function listMealCatalog(): Promise<DiscoveredRecipe[]> {
   if (!mealCatalogCache) {
-    mealCatalogCache = Promise.all(
-      LETTERS.map((l) => fetchCatalogLetter("https://www.themealdb.com/api/json/v1/1/search.php", l, "meals", 20)),
-    ).then((pages) => pages.flat());
+    const cached = readCatalogLocalCache(MEAL_CACHE_KEY);
+    mealCatalogCache = cached
+      ? Promise.resolve(cached)
+      : Promise.all(
+          LETTERS.map((l) => fetchCatalogLetter("https://www.themealdb.com/api/json/v1/1/search.php", l, "meals", 20)),
+        ).then((pages) => {
+          const flat = pages.flat();
+          writeCatalogLocalCache(MEAL_CACHE_KEY, flat);
+          return flat;
+        });
   }
   return mealCatalogCache;
 }
 
 async function listCocktailCatalog(): Promise<DiscoveredRecipe[]> {
   if (!cocktailCatalogCache) {
-    cocktailCatalogCache = Promise.all(
-      LETTERS.map((l) =>
-        fetchCatalogLetter("https://www.thecocktaildb.com/api/json/v1/1/search.php", l, "drinks", 15),
-      ),
-    ).then((pages) => pages.flat());
+    const cached = readCatalogLocalCache(COCKTAIL_CACHE_KEY);
+    cocktailCatalogCache = cached
+      ? Promise.resolve(cached)
+      : Promise.all(
+          LETTERS.map((l) =>
+            fetchCatalogLetter("https://www.thecocktaildb.com/api/json/v1/1/search.php", l, "drinks", 15),
+          ),
+        ).then((pages) => {
+          const flat = pages.flat();
+          writeCatalogLocalCache(COCKTAIL_CACHE_KEY, flat);
+          return flat;
+        });
   }
   return cocktailCatalogCache;
 }
