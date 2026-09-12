@@ -3,6 +3,7 @@ import SignOutButton from "@/components/SignOutButton";
 import UserAvatar from "@/components/UserAvatar";
 import ThemeToggle from "@/components/ThemeToggle";
 import UnitsPreference from "@/components/UnitsPreference";
+import HouseholdSection from "@/components/HouseholdSection";
 import type { CurrentUser } from "@/lib/useCurrentUser";
 import type { UnitSystem } from "@/lib/unitConversion";
 
@@ -22,6 +23,27 @@ export default async function AccountPage() {
     ? { data: null }
     : await supabase.from("profiles").select("preferred_units").eq("id", user.id).maybeSingle();
   const preferredUnits = (profile?.preferred_units as UnitSystem | null) ?? null;
+
+  const { data: membership } = isGuest
+    ? { data: null }
+    : await supabase.from("household_members").select("household_id").eq("user_id", user.id).maybeSingle();
+
+  const [{ data: household }, { data: memberRows }] = membership
+    ? await Promise.all([
+        supabase.from("households").select("*").eq("id", membership.household_id).maybeSingle(),
+        supabase.from("household_members").select("user_id").eq("household_id", membership.household_id),
+      ])
+    : [{ data: null }, { data: null }];
+
+  const memberIds = (memberRows ?? []).map((m) => m.user_id);
+  const { data: memberProfiles } = memberIds.length
+    ? await supabase.from("profiles").select("id, full_name").in("id", memberIds)
+    : { data: [] };
+  const members = memberIds.map((id) => ({
+    id,
+    full_name: memberProfiles?.find((p) => p.id === id)?.full_name ?? null,
+  }));
+
   const metadata = user.user_metadata ?? {};
   const currentUser: CurrentUser = {
     id: user.id,
@@ -83,6 +105,15 @@ export default async function AccountPage() {
               Units
             </p>
             <UnitsPreference initialUnits={preferredUnits} />
+          </div>
+        )}
+
+        {!isGuest && (
+          <div className="w-full rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+            <p className="mb-3 text-xs font-medium tracking-wide text-gray-400 uppercase dark:text-gray-500">
+              Household
+            </p>
+            <HouseholdSection household={household} members={members} currentUserId={user.id} />
           </div>
         )}
       </div>

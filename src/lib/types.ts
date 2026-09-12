@@ -18,17 +18,6 @@ export type ShoppingItem = {
   category: string | null;
 };
 
-export type CatalogItem = {
-  id: string;
-  list_id: string;
-  name: string;
-  use_count: number;
-  last_used_at: string;
-  category: string | null;
-  is_favorite: boolean;
-  is_pantry: boolean;
-};
-
 export type UserItem = {
   id: string;
   owner_id: string;
@@ -37,6 +26,25 @@ export type UserItem = {
   is_favorite: boolean;
   is_pantry: boolean;
   created_at: string;
+};
+
+export type Household = {
+  id: string;
+  name: string;
+  invite_code: string;
+  owner_id: string;
+  created_at: string;
+};
+
+export type HouseholdItem = {
+  id: string;
+  household_id: string;
+  name: string;
+  category: string | null;
+  quantity: number;
+  added_by: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type RecipeKind = "food" | "cocktail";

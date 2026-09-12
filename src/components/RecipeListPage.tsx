@@ -19,7 +19,21 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
     return null; // middleware redirects to /login
   }
 
-  const [{ data: owned }, { data: sharedRows }] = await Promise.all([
+  const { data: myMembership } = await supabase
+    .from("household_members")
+    .select("household_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const { data: householdMemberRows } = myMembership
+    ? await supabase
+        .from("household_members")
+        .select("user_id")
+        .eq("household_id", myMembership.household_id)
+        .neq("user_id", user.id)
+    : { data: [] };
+  const householdMemberIds = (householdMemberRows ?? []).map((m) => m.user_id);
+
+  const [{ data: owned }, { data: sharedRows }, { data: householdRecipes }] = await Promise.all([
     supabase
       .from("recipes")
       .select("*")
@@ -27,6 +41,9 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
       .eq("kind", kind)
       .order("created_at", { ascending: false }),
     supabase.from("recipe_shares").select("recipe_id, recipes(*)").eq("user_id", user.id),
+    householdMemberIds.length
+      ? supabase.from("recipes").select("*").in("owner_id", householdMemberIds).eq("kind", kind)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const shared = (sharedRows ?? [])
@@ -36,6 +53,7 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
   const recipes = [
     ...(owned ?? []).map((r) => ({ recipe: r, isShared: false })),
     ...shared.map((r) => ({ recipe: r, isShared: true })),
+    ...(householdRecipes ?? []).map((r) => ({ recipe: r, isShared: true })),
   ].sort((a, b) => b.recipe.created_at.localeCompare(a.recipe.created_at));
 
   // Pulled in alongside the recipes so the search box can match against
@@ -60,14 +78,17 @@ export default async function RecipeListPage({ kind }: { kind: RecipeKind }) {
   const accent = ACCENT[kind];
   const noun = isCocktail ? "cocktail" : "recipe";
 
-  // "What can I make?" pantry signal — prefer items explicitly marked
-  // "have at home" on the Items screen; if nothing's tagged yet, fall back
-  // to whatever's on the lists so the feature isn't empty from day one.
-  const { data: pantryUserItems } = await supabase
-    .from("user_items")
-    .select("name")
-    .eq("is_pantry", true);
-  let pantryItems = Array.from(new Set((pantryUserItems ?? []).map((r) => r.name)));
+  // "What can I make?" pantry signal — prefer the household's shared
+  // pantry; if there's no household yet, fall back to whatever's on the
+  // lists so the feature isn't empty from day one.
+  let pantryItems: string[] = [];
+  if (myMembership) {
+    const { data: householdItems } = await supabase
+      .from("household_items")
+      .select("name")
+      .eq("household_id", myMembership.household_id);
+    pantryItems = Array.from(new Set((householdItems ?? []).map((r) => r.name)));
+  }
 
   if (pantryItems.length === 0) {
     const { data: memberLists } = await supabase.from("list_members").select("list_id").eq("user_id", user.id);
