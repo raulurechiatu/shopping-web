@@ -72,7 +72,14 @@ export type PantryMatch = {
   recipe: DiscoveredRecipe;
   haveIngredients: string[];
   missingIngredients: string[];
+  matchRatio: number;
 };
+
+// Below this share of ingredients on hand, a recipe reads more like a
+// "here's an idea, go shopping" suggestion than something you can actually
+// make right now — kept separate so the main list isn't dominated by
+// recipes you're missing most of.
+export const GOOD_MATCH_RATIO = 0.6;
 
 // filter.php only matches a single *exact* canonical ingredient string
 // ("Light rum" and "Rum" are different ingredients to it, and plenty of
@@ -201,16 +208,19 @@ export async function findRecipesFromIngredients(
       const inPantry = pantrySynonyms.some((s) => termMatches(ing.name, s));
       (inPantry ? have : missing).push(ing.name);
     }
-    if (have.length > 0) matches.push({ recipe, haveIngredients: have, missingIngredients: missing });
+    if (have.length > 0) {
+      matches.push({
+        recipe,
+        haveIngredients: have,
+        missingIngredients: missing,
+        matchRatio: have.length / (have.length + missing.length),
+      });
+    }
   }
 
   return matches
-    .sort(
-      (a, b) =>
-        a.missingIngredients.length - b.missingIngredients.length ||
-        b.haveIngredients.length - a.haveIngredients.length,
-    )
-    .slice(0, 12);
+    .sort((a, b) => b.matchRatio - a.matchRatio || b.haveIngredients.length - a.haveIngredients.length)
+    .slice(0, 24);
 }
 
 // Shared by the "Discover" search and "What can I make?" — both end with

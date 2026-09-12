@@ -11,6 +11,7 @@ export default function RecipePreviewModal({
   onAdd,
   onClose,
   preferredUnits,
+  missingIngredients,
 }: {
   recipe: DiscoveredRecipe;
   kind: RecipeKind;
@@ -18,7 +19,12 @@ export default function RecipePreviewModal({
   onAdd: () => void;
   onClose: () => void;
   preferredUnits?: UnitSystem | null;
+  // From a pantry match — when present, each ingredient line shows whether
+  // you already have it. Absent for plain Discover-search previews, which
+  // have no pantry comparison to show.
+  missingIngredients?: string[];
 }) {
+  const missingSet = missingIngredients ? new Set(missingIngredients) : null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
@@ -50,18 +56,25 @@ export default function RecipePreviewModal({
             <p className="mb-1.5 text-xs font-medium tracking-wide text-gray-400 uppercase dark:text-gray-500">
               Ingredients
             </p>
-            <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
-              {recipe.ingredients.map((ing, i) => (
-                <li key={i}>
-                  {ing.name}
-                  {ing.quantity && (
-                    <span className="text-gray-400 dark:text-gray-500">
-                      {" "}
-                      — {convertQuantity(ing.quantity, preferredUnits ?? null)}
-                    </span>
-                  )}
-                </li>
-              ))}
+            <ul className="space-y-1 text-sm">
+              {recipe.ingredients.map((ing, i) => {
+                const missing = missingSet?.has(ing.name);
+                return (
+                  <li
+                    key={i}
+                    className={missingSet ? (missing ? "text-gray-500 dark:text-gray-400" : "text-gray-900 dark:text-gray-100") : "text-gray-700 dark:text-gray-300"}
+                  >
+                    {missingSet && <span className="mr-1">{missing ? "⬜" : "✅"}</span>}
+                    {ing.name}
+                    {ing.quantity && (
+                      <span className="text-gray-400 dark:text-gray-500">
+                        {" "}
+                        — {convertQuantity(ing.quantity, preferredUnits ?? null)}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

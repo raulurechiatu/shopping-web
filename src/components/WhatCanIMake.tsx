@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { findRecipesFromIngredients, importDiscoveredRecipe, type PantryMatch } from "@/lib/recipeDiscovery";
+import {
+  findRecipesFromIngredients,
+  importDiscoveredRecipe,
+  GOOD_MATCH_RATIO,
+  type PantryMatch,
+} from "@/lib/recipeDiscovery";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import { useDialog } from "@/lib/DialogProvider";
 import RecipePreviewModal from "@/components/RecipePreviewModal";
@@ -31,6 +36,51 @@ export default function WhatCanIMake({
   const noun = kind === "cocktail" ? "cocktails" : "recipes";
 
   if (pantryItems.length === 0) return null;
+
+  const goodMatches = matches.filter((m) => m.matchRatio >= GOOD_MATCH_RATIO);
+  const ideaMatches = matches.filter((m) => m.matchRatio < GOOD_MATCH_RATIO);
+
+  function renderMatch(match: PantryMatch) {
+    return (
+      <li
+        key={match.recipe.externalId}
+        className="flex items-center gap-3 rounded-xl bg-white p-2.5 shadow-sm dark:bg-gray-900"
+      >
+        <button
+          type="button"
+          onClick={() => setPreviewing(match)}
+          className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 text-left"
+        >
+          {match.recipe.thumbnail && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={match.recipe.thumbnail}
+              alt=""
+              className="h-12 w-12 shrink-0 rounded-lg object-cover"
+              loading="lazy"
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            <span className="font-hand block truncate text-base text-gray-900 dark:text-gray-100">
+              {match.recipe.name}
+            </span>
+            <span className="block truncate text-xs text-gray-400 dark:text-gray-500">
+              {match.missingIngredients.length === 0
+                ? `Have all ${match.haveIngredients.length} ingredients`
+                : `Missing ${match.missingIngredients.length}: ${match.missingIngredients.join(", ")}`}
+            </span>
+          </div>
+        </button>
+        <button
+          onClick={() => handleImport(match)}
+          disabled={importingId === match.recipe.externalId}
+          className="shrink-0 touch-manipulation rounded-full border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-400 hover:text-gray-900 disabled:opacity-50 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-500 dark:hover:text-gray-100"
+        >
+          {importingId === match.recipe.externalId ? "Adding..." : "➕ Add"}
+        </button>
+      </li>
+    );
+  }
 
   async function handleFind() {
     if (!(await requireOnline())) return;
@@ -81,54 +131,21 @@ export default function WhatCanIMake({
             <p className="font-hand text-center text-gray-400 dark:text-gray-500">Checking your items...</p>
           )}
 
-          {!loading && matches.length > 0 && (
-            <ul className="space-y-2">
-              {matches.map((match) => (
-                <li
-                  key={match.recipe.externalId}
-                  className="flex items-center gap-3 rounded-xl bg-white p-2.5 shadow-sm dark:bg-gray-900"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setPreviewing(match)}
-                    className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 text-left"
-                  >
-                    {match.recipe.thumbnail && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={match.recipe.thumbnail}
-                        alt=""
-                        className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                        loading="lazy"
-                      />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <span className="font-hand block truncate text-base text-gray-900 dark:text-gray-100">
-                        {match.recipe.name}
-                      </span>
-                      <span className="block truncate text-xs text-gray-400 dark:text-gray-500">
-                        {match.missingIngredients.length === 0
-                          ? `Have all ${match.haveIngredients.length} ingredients`
-                          : `Missing ${match.missingIngredients.length}: ${match.missingIngredients.join(", ")}`}
-                      </span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => handleImport(match)}
-                    disabled={importingId === match.recipe.externalId}
-                    className="shrink-0 touch-manipulation rounded-full border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-400 hover:text-gray-900 disabled:opacity-50 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-500 dark:hover:text-gray-100"
-                  >
-                    {importingId === match.recipe.externalId ? "Adding..." : "➕ Add"}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {!loading && goodMatches.length > 0 && <ul className="space-y-2">{goodMatches.map(renderMatch)}</ul>}
 
           {searched && !loading && matches.length === 0 && (
             <p className="font-hand text-center text-gray-400 dark:text-gray-500">
               Couldn&apos;t find any {noun} using what&apos;s on your lists.
             </p>
+          )}
+
+          {!loading && ideaMatches.length > 0 && (
+            <div className={goodMatches.length > 0 ? "mt-5" : undefined}>
+              <p className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase dark:text-gray-500">
+                More ideas — you&apos;ll need to pick up a few things
+              </p>
+              <ul className="space-y-2">{ideaMatches.map(renderMatch)}</ul>
+            </div>
           )}
         </>
       )}
@@ -141,6 +158,7 @@ export default function WhatCanIMake({
           onAdd={() => handleImport(previewing)}
           onClose={() => setPreviewing(null)}
           preferredUnits={preferredUnits}
+          missingIngredients={previewing.missingIngredients}
         />
       )}
     </div>
