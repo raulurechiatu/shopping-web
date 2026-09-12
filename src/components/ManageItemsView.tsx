@@ -12,7 +12,6 @@ export default function ManageItemsView({ initialItems }: { initialItems: UserIt
   const { confirmDialog, alertDialog } = useDialog();
   const requireOnline = useOnlineGuard();
   const [items, setItems] = useState<UserItem[]>(initialItems);
-  const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
 
@@ -110,10 +109,13 @@ export default function ManageItemsView({ initialItems }: { initialItems: UserIt
     }
   }
 
-  const trimmedQuery = query.trim().toLowerCase();
-  const filtered = (trimmedQuery ? items.filter((i) => i.name.toLowerCase().includes(trimmedQuery)) : items).sort(
-    (a, b) => a.name.localeCompare(b.name),
-  );
+  // Typing an item name doubles as a live filter over the existing items
+  // (matching how the shopping list's add-item input works) — no separate
+  // search box needed.
+  const trimmedNewName = newName.trim().toLowerCase();
+  const filtered = (
+    trimmedNewName ? items.filter((i) => i.name.toLowerCase().includes(trimmedNewName)) : items
+  ).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="min-h-screen bg-[#f7f6f3] px-4 py-10 dark:bg-[#14171c]">
@@ -141,15 +143,6 @@ export default function ManageItemsView({ initialItems }: { initialItems: UserIt
           </button>
         </form>
 
-        {items.length > 4 && (
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="🔍 Search items..."
-            className="font-hand w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent-food)] focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
-          />
-        )}
-
         {items.length === 0 && (
           <p className="font-hand py-12 text-center text-lg text-gray-400 dark:text-gray-500">
             No items yet — add one above, or star an item while shopping.
@@ -158,7 +151,7 @@ export default function ManageItemsView({ initialItems }: { initialItems: UserIt
 
         {items.length > 0 && filtered.length === 0 && (
           <p className="font-hand py-12 text-center text-lg text-gray-400 dark:text-gray-500">
-            No items match &ldquo;{query}&rdquo;.
+            No items match &ldquo;{newName.trim()}&rdquo;.
           </p>
         )}
 
