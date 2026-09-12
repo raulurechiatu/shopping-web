@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getItemIcon } from "@/lib/itemIcons";
 import { getItemCategory } from "@/lib/itemCategories";
+import { lookupBarcode } from "@/lib/barcodeLookup";
+import BarcodeScanner from "@/components/BarcodeScanner";
 import { useDialog } from "@/lib/DialogProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
 import { useToast } from "@/lib/ToastProvider";
@@ -28,6 +30,9 @@ export default function ManageItemsView({
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
   const [detailItem, setDetailItem] = useState<HouseholdItem | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanStatus, setScanStatus] = useState<"idle" | "looking-up">("idle");
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!householdId) return;
@@ -88,6 +93,15 @@ export default function ManageItemsView({
       setNewName("");
     }
     setAdding(false);
+  }
+
+  async function handleScan(code: string) {
+    setShowScanner(false);
+    setScanStatus("looking-up");
+    const name = await lookupBarcode(code);
+    setNewName(name ?? code);
+    setScanStatus("idle");
+    nameInputRef.current?.focus();
   }
 
   async function toggleFavorite(item: HouseholdItem) {
@@ -175,8 +189,20 @@ export default function ManageItemsView({
           </div>
         ) : (
           <>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                disabled={scanStatus === "looking-up"}
+                className="flex touch-manipulation items-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100 disabled:opacity-50"
+              >
+                {scanStatus === "looking-up" ? "…" : "📷"} Scan barcode
+              </button>
+            </div>
+
             <form onSubmit={addPantryItem} className="flex gap-2">
               <input
+                ref={nameInputRef}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Add an item... (EN or RO)"
@@ -190,6 +216,8 @@ export default function ManageItemsView({
                 Add
               </button>
             </form>
+
+            {showScanner && <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />}
 
             {pantryItems.length === 0 && (
               <p className="font-hand py-12 text-center text-lg text-gray-400 dark:text-gray-500">
