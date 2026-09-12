@@ -12,6 +12,7 @@ export default function ShareModal({
   mailSubject,
   shareText,
   onClose,
+  onShareWithHousehold,
 }: {
   title: string;
   description: string;
@@ -20,10 +21,13 @@ export default function ShareModal({
   mailSubject: string;
   shareText: (joinUrl: string) => string;
   onClose: () => void;
+  onShareWithHousehold?: () => Promise<void> | void;
 }) {
   const { alertDialog } = useDialog();
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [householdState, setHouseholdState] = useState<"idle" | "sharing" | "shared" | "error">("idle");
+  const [householdError, setHouseholdError] = useState<string | null>(null);
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
   const joinUrl = typeof window !== "undefined" ? `${window.location.origin}${joinPath}` : "";
   const messageBody = shareText(joinUrl);
@@ -89,7 +93,18 @@ export default function ShareModal({
     }
   }
 
-  const mailtoHref = `mailto:?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(messageBody)}`;
+  async function shareWithHousehold() {
+    if (!onShareWithHousehold || householdState === "sharing") return;
+    setHouseholdState("sharing");
+    setHouseholdError(null);
+    try {
+      await onShareWithHousehold();
+      setHouseholdState("shared");
+    } catch (err) {
+      setHouseholdState("error");
+      setHouseholdError(err instanceof Error ? err.message : "Couldn't share with your household.");
+    }
+  }
 
   return (
     <div
@@ -103,11 +118,15 @@ export default function ShareModal({
         <h2 className="font-hand text-2xl text-gray-900 dark:text-gray-100">{title}</h2>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>
 
-        <div className="mx-auto mt-5 w-fit rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-4">
+        <button
+          onClick={() => copy(code, "code")}
+          className="mx-auto mt-5 block w-fit touch-manipulation rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-4 hover:border-gray-400 dark:hover:border-gray-500"
+        >
           <span className="font-mono text-4xl font-bold tracking-[0.25em] text-gray-900 dark:text-gray-100">
-            {code}
+            {copied === "code" ? "Copied!" : code}
           </span>
-        </div>
+        </button>
+        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Tap the code to copy it</p>
 
         {qrDataUrl && (
           <div className="mx-auto mt-3 w-fit rounded-xl bg-white p-3">
@@ -135,18 +154,22 @@ export default function ShareModal({
               Share...
             </button>
           )}
-          <a
-            href={mailtoHref}
-            className="touch-manipulation rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            Email invite
-          </a>
-          <button
-            onClick={() => copy(code, "code")}
-            className="touch-manipulation rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            {copied === "code" ? "Copied!" : "Copy code"}
-          </button>
+          {onShareWithHousehold && (
+            <>
+              <button
+                onClick={shareWithHousehold}
+                disabled={householdState === "sharing" || householdState === "shared"}
+                className="touch-manipulation rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60"
+              >
+                {householdState === "sharing"
+                  ? "Sharing..."
+                  : householdState === "shared"
+                    ? "Shared with household ✓"
+                    : "🏠 Share with household"}
+              </button>
+              {householdError && <p className="text-sm text-red-600">{householdError}</p>}
+            </>
+          )}
           <button
             onClick={onClose}
             className="touch-manipulation px-4 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700"

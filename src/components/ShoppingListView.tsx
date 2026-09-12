@@ -604,6 +604,11 @@ export default function ShoppingListView({
             `Join my shopping list "${list.name}" so we can shop together.\n\nOpen this link to join instantly: ${joinUrl}\n\nOr enter this invite code in the app: ${list.invite_code}`
           }
           onClose={() => setShowInvite(false)}
+          onShareWithHousehold={async () => {
+            const supabase = createClient();
+            const { error } = await supabase.rpc("share_list_with_household", { target_list_id: list.id });
+            if (error) throw error;
+          }}
         />
       )}
     </div>
