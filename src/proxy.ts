@@ -31,7 +31,8 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/auth") ||
     request.nextUrl.pathname.startsWith("/join") ||
-    request.nextUrl.pathname.startsWith("/recipes/join");
+    request.nextUrl.pathname.startsWith("/recipes/join") ||
+    request.nextUrl.pathname.startsWith("/household/join");
 
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone();

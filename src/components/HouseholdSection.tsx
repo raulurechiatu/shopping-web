@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
+import ShareModal from "@/components/ShareModal";
 import type { Household } from "@/lib/types";
 
 type Member = { id: string; full_name: string | null };
@@ -24,6 +25,7 @@ export default function HouseholdSection({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -87,10 +89,34 @@ export default function HouseholdSection({
               {copied ? "Copied ✓" : "Copy"}
             </button>
           </div>
+          <button
+            onClick={() => setShowInvite(true)}
+            className="mt-2 flex w-full touch-manipulation items-center justify-center gap-1.5 rounded-lg bg-[#2b3a55] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1f2c42]"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path d="M15 8a3 3 0 10-2.83-4H12a3 3 0 000 6h.17A3 3 0 0015 8zM5 10a3 3 0 100 6 3 3 0 000-6zm10 2a3 3 0 100 6 3 3 0 000-6z" />
+              <path d="M7.5 12.5l5-3M7.5 13.5l5 3" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+            Invite with QR code
+          </button>
           <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-            Anyone who joins with this code shares your pantry and recipes.
+            Anyone who joins shares your pantry and recipes.
           </p>
         </div>
+
+        {showInvite && (
+          <ShareModal
+            title={`Join ${household.name}`}
+            description="Share a link, QR code, or invite code so someone can join your household."
+            code={household.invite_code}
+            joinPath={`/household/join/${household.invite_code}`}
+            mailSubject={`Join my household "${household.name}"`}
+            shareText={(joinUrl) =>
+              `Join my household "${household.name}" so we can share a pantry and recipes.\n\nOpen this link to join instantly: ${joinUrl}\n\nOr enter this invite code in the app: ${household.invite_code}`
+            }
+            onClose={() => setShowInvite(false)}
+          />
+        )}
       </div>
     );
   }

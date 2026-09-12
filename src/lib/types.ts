@@ -42,6 +42,7 @@ export type HouseholdItem = {
   name: string;
   category: string | null;
   quantity: number;
+  is_favorite: boolean;
   added_by: string | null;
   created_at: string;
   updated_at: string;

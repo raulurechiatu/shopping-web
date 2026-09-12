@@ -13,10 +13,11 @@ export default async function ItemsPage() {
     return null; // middleware redirects to /login
   }
 
-  const [{ data: favorites }, { data: membership }] = await Promise.all([
-    supabase.from("user_items").select("*").eq("is_favorite", true).order("name", { ascending: true }),
-    supabase.from("household_members").select("household_id").eq("user_id", user.id).maybeSingle(),
-  ]);
+  const { data: membership } = await supabase
+    .from("household_members")
+    .select("household_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   let pantryItems: HouseholdItem[] = [];
   let memberNames: Record<string, string> = {};
@@ -41,8 +42,7 @@ export default async function ItemsPage() {
 
   return (
     <ManageItemsView
-      initialFavorites={favorites ?? []}
-      initialPantryItems={pantryItems ?? []}
+      initialPantryItems={pantryItems}
       householdId={membership?.household_id ?? null}
       memberNames={memberNames}
       currentUserId={user.id}
