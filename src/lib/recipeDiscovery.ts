@@ -16,6 +16,16 @@ export type DiscoveredRecipe = {
 
 type RawEntry = Record<string, string | null>;
 
+// Thrown by the search/catalog fetches on a network or API failure, so
+// callers can tell "the request failed" apart from "genuinely no matches"
+// instead of both looking like an empty array.
+export class RecipeFetchError extends Error {
+  constructor() {
+    super("Couldn't reach the recipe database. Check your connection and try again.");
+    this.name = "RecipeFetchError";
+  }
+}
+
 function parseIngredients(item: RawEntry, count: number): { name: string; quantity: string | null }[] {
   const result: { name: string; quantity: string | null }[] = [];
   for (let i = 1; i <= count; i++) {
@@ -27,41 +37,39 @@ function parseIngredients(item: RawEntry, count: number): { name: string; quanti
 }
 
 export async function searchMealRecipes(query: string): Promise<DiscoveredRecipe[]> {
+  let res: Response;
   try {
-    const res = await fetch(
-      `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`,
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return ((data.meals ?? []) as RawEntry[]).map((m) => ({
-      externalId: m.idMeal!,
-      name: m.strMeal!,
-      thumbnail: m.strMealThumb,
-      ingredients: parseIngredients(m, 20),
-      instructions: m.strInstructions ?? "",
-    }));
+    res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`);
   } catch {
-    return [];
+    throw new RecipeFetchError();
   }
+  if (!res.ok) throw new RecipeFetchError();
+  const data = await res.json();
+  return ((data.meals ?? []) as RawEntry[]).map((m) => ({
+    externalId: m.idMeal!,
+    name: m.strMeal!,
+    thumbnail: m.strMealThumb,
+    ingredients: parseIngredients(m, 20),
+    instructions: m.strInstructions ?? "",
+  }));
 }
 
 export async function searchCocktailRecipes(query: string): Promise<DiscoveredRecipe[]> {
+  let res: Response;
   try {
-    const res = await fetch(
-      `https://www.thecocktaildb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`,
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return ((data.drinks ?? []) as RawEntry[]).map((m) => ({
-      externalId: m.idDrink!,
-      name: m.strDrink!,
-      thumbnail: m.strDrinkThumb,
-      ingredients: parseIngredients(m, 15),
-      instructions: m.strInstructions ?? "",
-    }));
+    res = await fetch(`https://www.thecocktaildb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`);
   } catch {
-    return [];
+    throw new RecipeFetchError();
   }
+  if (!res.ok) throw new RecipeFetchError();
+  const data = await res.json();
+  return ((data.drinks ?? []) as RawEntry[]).map((m) => ({
+    externalId: m.idDrink!,
+    name: m.strDrink!,
+    thumbnail: m.strDrinkThumb,
+    ingredients: parseIngredients(m, 15),
+    instructions: m.strInstructions ?? "",
+  }));
 }
 
 // The full recipe is included (not just the stub) so a match can be
@@ -93,8 +101,8 @@ export const GOOD_MATCH_RATIO = 0.6;
 // recipe's actual ingredients directly — no exact-match guessing game.
 const LETTERS = "abcdefghijklmnopqrstuvwxyz".split("");
 
-let mealCatalogCache: Promise<DiscoveredRecipe[]> | null = null;
-let cocktailCatalogCache: Promise<DiscoveredRecipe[]> | null = null;
+let mealCatalogCache: Promise<Catalog> | null = null;
+let cocktailCatalogCache: Promise<Catalog> | null = null;
 
 // Persists the catalog across page loads/sessions (not just this tab's
 // lifetime) so a repeat visit doesn't re-pay for 26 requests. Wrapped in
@@ -123,63 +131,78 @@ function writeCatalogLocalCache(key: string, data: DiscoveredRecipe[]) {
   }
 }
 
+// `ok: false` marks a letter that failed to fetch, distinct from a letter
+// that legitimately has zero recipes — a catalog built from a mix of the
+// two should be treated as incomplete rather than cached as if it were
+// the full, correct set.
+type CatalogLetterResult = { ok: true; items: DiscoveredRecipe[] } | { ok: false };
+
 async function fetchCatalogLetter(
   url: string,
   letter: string,
   listKey: "meals" | "drinks",
   count: number,
-): Promise<DiscoveredRecipe[]> {
+): Promise<CatalogLetterResult> {
   try {
     const res = await fetch(`${url}?f=${letter}`);
-    if (!res.ok) return [];
+    if (!res.ok) return { ok: false };
     const data = await res.json();
-    return ((data[listKey] ?? []) as RawEntry[]).map((m) => ({
+    const items = ((data[listKey] ?? []) as RawEntry[]).map((m) => ({
       externalId: (m.idMeal ?? m.idDrink)!,
       name: (m.strMeal ?? m.strDrink)!,
       thumbnail: m.strMealThumb ?? m.strDrinkThumb,
       ingredients: parseIngredients(m, count),
       instructions: m.strInstructions ?? "",
     }));
+    return { ok: true, items };
   } catch {
-    return [];
+    return { ok: false };
   }
 }
 
 const MEAL_CACHE_KEY = "catalog-cache:meals";
 const COCKTAIL_CACHE_KEY = "catalog-cache:cocktails";
 
-async function listMealCatalog(): Promise<DiscoveredRecipe[]> {
-  if (!mealCatalogCache) {
-    const cached = readCatalogLocalCache(MEAL_CACHE_KEY);
-    mealCatalogCache = cached
-      ? Promise.resolve(cached)
-      : Promise.all(
-          LETTERS.map((l) => fetchCatalogLetter("https://www.themealdb.com/api/json/v1/1/search.php", l, "meals", 20)),
-        ).then((pages) => {
-          const flat = pages.flat();
-          writeCatalogLocalCache(MEAL_CACHE_KEY, flat);
-          return flat;
-        });
-  }
-  return mealCatalogCache;
+type Catalog = { recipes: DiscoveredRecipe[]; hadErrors: boolean };
+
+async function listMealCatalog(): Promise<Catalog> {
+  if (mealCatalogCache) return mealCatalogCache;
+  const cached = readCatalogLocalCache(MEAL_CACHE_KEY);
+  if (cached) return { recipes: cached, hadErrors: false };
+
+  const promise = Promise.all(
+    LETTERS.map((l) => fetchCatalogLetter("https://www.themealdb.com/api/json/v1/1/search.php", l, "meals", 20)),
+  ).then((pages) => {
+    const hadErrors = pages.some((p) => !p.ok);
+    const recipes = pages.flatMap((p) => (p.ok ? p.items : []));
+    if (!hadErrors) writeCatalogLocalCache(MEAL_CACHE_KEY, recipes);
+    return { recipes, hadErrors };
+  });
+  mealCatalogCache = promise;
+  const result = await promise;
+  // A failed attempt isn't memoized — the caller retries next time instead
+  // of being stuck with a partial/empty catalog for the rest of the session.
+  if (result.hadErrors) mealCatalogCache = null;
+  return result;
 }
 
-async function listCocktailCatalog(): Promise<DiscoveredRecipe[]> {
-  if (!cocktailCatalogCache) {
-    const cached = readCatalogLocalCache(COCKTAIL_CACHE_KEY);
-    cocktailCatalogCache = cached
-      ? Promise.resolve(cached)
-      : Promise.all(
-          LETTERS.map((l) =>
-            fetchCatalogLetter("https://www.thecocktaildb.com/api/json/v1/1/search.php", l, "drinks", 15),
-          ),
-        ).then((pages) => {
-          const flat = pages.flat();
-          writeCatalogLocalCache(COCKTAIL_CACHE_KEY, flat);
-          return flat;
-        });
-  }
-  return cocktailCatalogCache;
+async function listCocktailCatalog(): Promise<Catalog> {
+  if (cocktailCatalogCache) return cocktailCatalogCache;
+  const cached = readCatalogLocalCache(COCKTAIL_CACHE_KEY);
+  if (cached) return { recipes: cached, hadErrors: false };
+
+  const promise = Promise.all(
+    LETTERS.map((l) => fetchCatalogLetter("https://www.thecocktaildb.com/api/json/v1/1/search.php", l, "drinks", 15)),
+  ).then((pages) => {
+    const hadErrors = pages.some((p) => !p.ok);
+    const recipes = pages.flatMap((p) => (p.ok ? p.items : []));
+    if (!hadErrors) writeCatalogLocalCache(COCKTAIL_CACHE_KEY, recipes);
+    return { recipes, hadErrors };
+  });
+  cocktailCatalogCache = promise;
+  const result = await promise;
+  if (result.hadErrors) cocktailCatalogCache = null;
+  return result;
 }
 
 // "What can I make?" — matches recipes against a pantry list (whatever's
@@ -190,14 +213,14 @@ async function listCocktailCatalog(): Promise<DiscoveredRecipe[]> {
 export async function findRecipesFromIngredients(
   pantryItems: string[],
   kind: RecipeKind,
-): Promise<PantryMatch[]> {
+): Promise<{ matches: PantryMatch[]; hadErrors: boolean }> {
   const uniqueItems = Array.from(
     new Set(pantryItems.map((i) => i.trim().toLowerCase()).filter(Boolean)),
   ).slice(0, 15);
-  if (uniqueItems.length === 0) return [];
+  if (uniqueItems.length === 0) return { matches: [], hadErrors: false };
 
   const pantrySynonyms = uniqueItems.flatMap((item) => expandSynonyms(item));
-  const catalog = await (kind === "cocktail" ? listCocktailCatalog() : listMealCatalog());
+  const { recipes: catalog, hadErrors } = await (kind === "cocktail" ? listCocktailCatalog() : listMealCatalog());
 
   const matches: PantryMatch[] = [];
   for (const recipe of catalog) {
@@ -218,9 +241,10 @@ export async function findRecipesFromIngredients(
     }
   }
 
-  return matches
+  const sorted = matches
     .sort((a, b) => b.matchRatio - a.matchRatio || b.haveIngredients.length - a.haveIngredients.length)
     .slice(0, 24);
+  return { matches: sorted, hadErrors };
 }
 
 // Shared by the "Discover" search and "What can I make?" — both end with

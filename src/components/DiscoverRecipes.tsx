@@ -7,6 +7,7 @@ import {
   searchMealRecipes,
   searchCocktailRecipes,
   importDiscoveredRecipe,
+  RecipeFetchError,
   type DiscoveredRecipe,
 } from "@/lib/recipeDiscovery";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
@@ -32,6 +33,7 @@ export default function DiscoverRecipes({
   const [results, setResults] = useState<DiscoveredRecipe[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState<DiscoveredRecipe | null>(null);
   const requestIdRef = useRef(0);
@@ -53,11 +55,20 @@ export default function DiscoverRecipes({
     const thisRequestId = ++requestIdRef.current;
     setLoading(true);
     const timer = setTimeout(async () => {
-      const found = kind === "cocktail" ? await searchCocktailRecipes(trimmed) : await searchMealRecipes(trimmed);
-      if (thisRequestId !== requestIdRef.current) return; // a newer keystroke superseded this
-      setResults(found);
-      setSearched(true);
-      setLoading(false);
+      try {
+        const found = kind === "cocktail" ? await searchCocktailRecipes(trimmed) : await searchMealRecipes(trimmed);
+        if (thisRequestId !== requestIdRef.current) return; // a newer keystroke superseded this
+        setResults(found);
+        setFetchFailed(false);
+        setSearched(true);
+      } catch (err) {
+        if (thisRequestId !== requestIdRef.current) return;
+        setResults([]);
+        setFetchFailed(err instanceof RecipeFetchError);
+        setSearched(true);
+      } finally {
+        if (thisRequestId === requestIdRef.current) setLoading(false);
+      }
     }, DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
@@ -137,7 +148,13 @@ export default function DiscoverRecipes({
         </ul>
       )}
 
-      {searched && !loading && results.length === 0 && (
+      {searched && !loading && fetchFailed && (
+        <p className="font-hand text-center text-amber-600 dark:text-amber-400">
+          ⚠️ Couldn&apos;t reach the recipe database. Check your connection and try again.
+        </p>
+      )}
+
+      {searched && !loading && !fetchFailed && results.length === 0 && (
         <p className="font-hand text-center text-gray-400 dark:text-gray-500">
           No {kind === "cocktail" ? "cocktails" : "recipes"} found for &ldquo;{query.trim()}&rdquo;.
         </p>

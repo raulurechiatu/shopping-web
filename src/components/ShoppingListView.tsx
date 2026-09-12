@@ -30,7 +30,7 @@ export default function ShoppingListView({
   ownerName?: string | null;
   sharedWithHousehold?: boolean;
 }) {
-  const { showToast } = useToast();
+  const { showToast, showUndoToast } = useToast();
   const requireOnline = useOnlineGuard();
   const currentUserIdRef = useRef<string | null>(null);
   const memberNamesRef = useRef<Map<string, string>>(new Map());
@@ -331,16 +331,30 @@ export default function ShoppingListView({
 
   async function deleteItem(item: ShoppingItem) {
     if (!(await requireOnline())) return;
-    selfDeletedIdsRef.current.add(item.id);
+    // Removed from view right away, but the actual delete is deferred
+    // behind the undo toast — nothing is sent to the server unless the
+    // window passes with no click, so "Undo" costs nothing to honor.
     setItems((current) => current.filter((i) => i.id !== item.id));
 
-    const supabase = createClient();
-    const { error } = await supabase.from("list_items").delete().eq("id", item.id);
-
-    if (error) {
-      selfDeletedIdsRef.current.delete(item.id);
-      setItems((current) => (current.some((i) => i.id === item.id) ? current : [...current, item]));
-    }
+    showUndoToast(
+      `"${item.name}" removed`,
+      {
+        onUndo: () => {
+          setItems((current) => (current.some((i) => i.id === item.id) ? current : [...current, item]));
+        },
+        onExpire: async () => {
+          selfDeletedIdsRef.current.add(item.id);
+          const supabase = createClient();
+          const { error } = await supabase.from("list_items").delete().eq("id", item.id);
+          if (error) {
+            selfDeletedIdsRef.current.delete(item.id);
+            setItems((current) => (current.some((i) => i.id === item.id) ? current : [...current, item]));
+            showToast(error.message, "⚠️");
+          }
+        },
+      },
+      "🗑️",
+    );
   }
 
   function startEditingName() {

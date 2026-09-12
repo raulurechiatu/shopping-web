@@ -31,6 +31,7 @@ export default function WhatCanIMake({
   const [matches, setMatches] = useState<PantryMatch[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState<PantryMatch | null>(null);
   const noun = kind === "cocktail" ? "cocktails" : "recipes";
@@ -87,8 +88,10 @@ export default function WhatCanIMake({
     setOpen(true);
     setLoading(true);
     setSearched(true);
-    const found = await findRecipesFromIngredients(pantryItems, kind);
+    setFetchFailed(false);
+    const { matches: found, hadErrors } = await findRecipesFromIngredients(pantryItems, kind);
     setMatches(found);
+    setFetchFailed(hadErrors && found.length === 0);
     setLoading(false);
   }
 
@@ -131,9 +134,15 @@ export default function WhatCanIMake({
             <p className="font-hand text-center text-gray-400 dark:text-gray-500">Checking your items...</p>
           )}
 
+          {!loading && fetchFailed && (
+            <p className="font-hand text-center text-amber-600 dark:text-amber-400">
+              ⚠️ Couldn&apos;t reach the recipe database. Check your connection and try again.
+            </p>
+          )}
+
           {!loading && goodMatches.length > 0 && <ul className="space-y-2">{goodMatches.map(renderMatch)}</ul>}
 
-          {searched && !loading && matches.length === 0 && (
+          {searched && !loading && !fetchFailed && matches.length === 0 && (
             <p className="font-hand text-center text-gray-400 dark:text-gray-500">
               Couldn&apos;t find any {noun} using what&apos;s on your lists.
             </p>

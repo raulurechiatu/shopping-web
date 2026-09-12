@@ -11,6 +11,7 @@ import AddRecipeToListModal from "@/components/AddRecipeToListModal";
 import ShareModal from "@/components/ShareModal";
 import { useDialog } from "@/lib/DialogProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
+import { useToast } from "@/lib/ToastProvider";
 import type { Recipe, RecipeIngredient, ShoppingList } from "@/lib/types";
 
 const ACCENT_VAR = { food: "var(--accent-food)", cocktail: "var(--accent-cocktail)" } as const;
@@ -36,9 +37,10 @@ export default function RecipeDetail({
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
   const requireOnline = useOnlineGuard();
+  const { showUndoToast } = useToast();
   const [showAddToList, setShowAddToList] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
   const [scale, setScale] = useState(1);
 
   const scaledIngredients = ingredients.map((ing) => ({
@@ -59,18 +61,31 @@ export default function RecipeDetail({
     .filter(Boolean);
 
   async function handleDelete() {
-    const ok = await confirmDialog(`Delete "${recipe.name}"? This can't be undone.`);
+    const ok = await confirmDialog(`Delete "${recipe.name}"?`);
     if (!ok) return;
     if (!(await requireOnline())) return;
-    setDeleting(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("recipes").delete().eq("id", recipe.id);
-    if (error) {
-      await alertDialog(error.message);
-      setDeleting(false);
-      return;
-    }
-    router.push(backHref);
+
+    // Stay on this page and swap the content for a "deleted" placeholder
+    // rather than navigating away immediately — the actual delete (and
+    // the navigation back) waits behind the undo toast.
+    setPendingDelete(true);
+    showUndoToast(
+      `"${recipe.name}" deleted`,
+      {
+        onUndo: () => setPendingDelete(false),
+        onExpire: async () => {
+          const supabase = createClient();
+          const { error } = await supabase.from("recipes").delete().eq("id", recipe.id);
+          if (error) {
+            await alertDialog(error.message);
+            setPendingDelete(false);
+            return;
+          }
+          router.push(backHref);
+        },
+      },
+      "🗑️",
+    );
   }
 
   return (
@@ -128,8 +143,8 @@ export default function RecipeDetail({
                 </Link>
                 <button
                   onClick={handleDelete}
-                  disabled={deleting}
-                  className="touch-manipulation rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 shadow-sm hover:border-red-300 dark:hover:border-red-800 hover:text-red-500"
+                  disabled={pendingDelete}
+                  className="touch-manipulation rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 shadow-sm hover:border-red-300 dark:hover:border-red-800 hover:text-red-500 disabled:opacity-50"
                 >
                   🗑️ Delete
                 </button>
@@ -139,6 +154,12 @@ export default function RecipeDetail({
         </header>
 
         <main className="px-5 py-5 pl-16 sm:pl-20">
+          {pendingDelete ? (
+            <p className="font-hand py-12 text-center text-lg text-gray-400 dark:text-gray-500">
+              🗑️ Deleted — undo below if that was a mistake.
+            </p>
+          ) : (
+            <>
           {recipe.image_url && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -204,6 +225,8 @@ export default function RecipeDetail({
                 ))}
               </ol>
             </div>
+          )}
+            </>
           )}
         </main>
       </div>

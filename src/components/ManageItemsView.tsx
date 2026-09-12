@@ -7,6 +7,7 @@ import { getItemIcon } from "@/lib/itemIcons";
 import { getItemCategory } from "@/lib/itemCategories";
 import { useDialog } from "@/lib/DialogProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
+import { useToast } from "@/lib/ToastProvider";
 import type { HouseholdItem } from "@/lib/types";
 
 export default function ManageItemsView({
@@ -22,6 +23,7 @@ export default function ManageItemsView({
 }) {
   const { confirmDialog, alertDialog } = useDialog();
   const requireOnline = useOnlineGuard();
+  const { showUndoToast } = useToast();
   const [pantryItems, setPantryItems] = useState<HouseholdItem[]>(initialPantryItems);
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
@@ -119,14 +121,29 @@ export default function ManageItemsView({
     if (!ok) return;
     if (!(await requireOnline())) return;
 
+    // Removed from view right away, but the actual delete waits behind
+    // the undo toast — other household members won't see it disappear
+    // until the window passes with no click.
     setPantryItems((current) => current.filter((i) => i.id !== item.id));
     setDetailItem((current) => (current?.id === item.id ? null : current));
-    const supabase = createClient();
-    const { error } = await supabase.from("household_items").delete().eq("id", item.id);
-    if (error) {
-      setPantryItems((current) => [...current, item]);
-      await alertDialog(error.message);
-    }
+
+    showUndoToast(
+      `"${item.name}" removed`,
+      {
+        onUndo: () => {
+          setPantryItems((current) => (current.some((i) => i.id === item.id) ? current : [...current, item]));
+        },
+        onExpire: async () => {
+          const supabase = createClient();
+          const { error } = await supabase.from("household_items").delete().eq("id", item.id);
+          if (error) {
+            setPantryItems((current) => (current.some((i) => i.id === item.id) ? current : [...current, item]));
+            await alertDialog(error.message);
+          }
+        },
+      },
+      "🗑️",
+    );
   }
 
   const trimmedQuery = newName.trim().toLowerCase();

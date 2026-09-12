@@ -8,6 +8,7 @@ import ShareModal from "@/components/ShareModal";
 import { getItemIcon } from "@/lib/itemIcons";
 import { useDialog } from "@/lib/DialogProvider";
 import { useOnlineGuard } from "@/lib/useOnlineStatus";
+import { useToast } from "@/lib/ToastProvider";
 import type { ShoppingList } from "@/lib/types";
 
 export default function ListRow({
@@ -22,30 +23,38 @@ export default function ListRow({
   const router = useRouter();
   const { confirmDialog, alertDialog } = useDialog();
   const requireOnline = useOnlineGuard();
+  const { showUndoToast } = useToast();
   const [showInvite, setShowInvite] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [removed, setRemoved] = useState(false);
 
   async function handleDelete() {
-    const ok = await confirmDialog(
-      `Delete "${list.name}"? This removes it for everyone and can't be undone.`,
-    );
+    const ok = await confirmDialog(`Delete "${list.name}"? This removes it for everyone.`);
     if (!ok) return;
     if (!(await requireOnline())) return;
-    setDeleting(true);
-    // Hide the row immediately rather than waiting on the network round
-    // trip — router.refresh() would re-fetch the whole list from the
-    // server before anything visually changed.
+
+    // Hidden immediately, but the actual delete waits behind the undo
+    // toast — nothing reaches the server unless the window passes.
     setRemoved(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("lists").delete().eq("id", list.id);
-    if (error) {
-      await alertDialog(error.message);
-      setRemoved(false);
-      setDeleting(false);
-      return;
-    }
-    router.refresh();
+    showUndoToast(
+      `"${list.name}" deleted`,
+      {
+        onUndo: () => setRemoved(false),
+        onExpire: async () => {
+          setDeleting(true);
+          const supabase = createClient();
+          const { error } = await supabase.from("lists").delete().eq("id", list.id);
+          if (error) {
+            await alertDialog(error.message);
+            setRemoved(false);
+            setDeleting(false);
+            return;
+          }
+          router.refresh();
+        },
+      },
+      "🗑️",
+    );
   }
 
   if (removed) return null;
